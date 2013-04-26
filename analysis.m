@@ -1,10 +1,10 @@
 clear all
 close all
 
-load('matrix.dat');
+M=load('matrix.dat');
+F=load('vector.dat');
 
-spy(matrix);
+% spy(matrix);
 
-[n,m]=size(matrix);
+% [n,m]=size(matrix);
 
-n*m
