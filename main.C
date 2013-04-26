@@ -5,7 +5,9 @@
 
 using namespace std;
 
-int three_d_to_one_d( const unsigned int i,
+#define pi 3.1415
+
+void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
 					  const unsigned int k,
 					  const unsigned int I,
@@ -13,6 +15,18 @@ int three_d_to_one_d( const unsigned int i,
 					  unsigned int& t )
 {
 	t=i + j*I + k*I*J;
+}
+
+void one_d_to_three_d( const unsigned int t,
+					   const unsigned int I,
+					   const unsigned int J,
+					   unsigned int& i,
+					   unsigned int& j,
+					   unsigned int& k)
+{
+	k = t/(I*J);
+	j = (t-k*I*J)/I;
+	i = t-j*I - k*I*J;
 }
 
 void one_d_to_two_d( const unsigned int t,
@@ -84,14 +98,102 @@ int write_vector( const unsigned int P,
 	return 0;
 }
 
+// write out the results
+int write_results( double* u,
+				   const int n_dof,
+				   const unsigned int I,
+				   const unsigned int J,
+				   const unsigned int K )
+{
+	// double*** results;    // 3D results definition;
+	// // begin memory allocation
+	// results = new double**[I];
+	// for(int x = 0; x < I; ++x) {
+	// 	results[x] = new double*[J];
+	// 	for(int y = 0; y < J; ++y) {
+	// 		results[x][y] = new double[K];
+	// 		for(int z = 0; z < K; ++z) { // initialize the values to whatever you want the default to be
+	// 			results[x][y][z] = 0;
+	// 		}
+	// 	}
+	// }
+
+	// write out the results now
+	ofstream file_out;
+	file_out.open ("results.vtk");
+	if(!file_out.is_open()){
+		return 1;
+	}
+	// file_out<<"x coord, y coord, z coord, scalar"<<endl;
+	// unsigned int i,j,k;
+	// for(int n=0; n<n_dof; n++){
+	// 	one_d_to_three_d( n, I, J, i, j, k);
+	// 	file_out<<j<<", "<<i<<", "<<k<<", "<<u[n]<<endl;
+	// }
+
+	
+	// header
+	file_out<<"# vtk DataFile Version 3.0"<<endl;
+	file_out<<"3d poisson problem"<<endl
+			<<"ASCII"<<endl
+			<<"DATASET STRUCTURED_GRID"<<endl
+			<<"DIMENSIONS "<<I<<" "<<J<<" "<<K<<endl
+			<<"POINTS "<<n_dof<<" "<<"float"<<endl;
+	
+	unsigned int i,j,k;
+	for(int n=0; n<n_dof; n++){
+		one_d_to_three_d( n, I, J, i, j, k);
+		file_out<<i<<" "<<j<<" "<<k<<endl;
+	}
+	
+	file_out<<"POINT_DATA "<<n_dof<<endl;
+	file_out<<"SCALARS u float 1"<<endl
+			<<"LOOKUP_TABLE default"<<endl;
+	for(int n=0; n<n_dof; n++){
+		file_out<<u[n]<<endl;
+	}
+			
+	
+		
+	file_out.close();
+
+}
+
+
+double convergence_check ( double** M,
+						   double* U,
+						   double* F,
+						   const int n_dof)
+{
+	double* R = new double[n_dof];
+	for(int n=0; n<n_dof; n++){
+	    R[n] = 0.0;
+    }
+	
+	for(int i=0; i<n_dof; i++){
+		for(int j=0; j<n_dof; j++){
+			R[i] += M[i][j]*U[j];
+		}
+		R[i] -= F[i];
+	}
+
+	double E=0;
+	for(int i=0; i<n_dof; i++){
+		// cout<<R[i]<<endl;
+		E+= R[i]*R[i];
+	}
+	
+	return E; 
+}
 
 int main()
 {
 	// number of grids
-	const unsigned int I=9;
-	const unsigned int J=9;
-	const unsigned int K=9;
-
+	const unsigned int I=16;
+	const unsigned int J=16;
+	const unsigned int K=16;
+	const unsigned int n_dof = I*J*K;
+	
 	const unsigned int P = sqrt(I*J*K);
 	const unsigned int Q = P;
 
@@ -117,11 +219,15 @@ int main()
 	const double dx2i = 1.0/(dx*dx);
 	const double dy2i = 1.0/(dy*dy);
 	const double dz2i = 1.0/(dz*dz);
+
+	// for jacobi method
+	const double tol = 0.01;
+	const int max_iteration = 100000;
 	
 	// initialize finite difference matrix
-	double** U = new double*[P];
-	for(int q = 0; q < P; ++q)
-		U[q] = new double[Q];
+	double** U = new double*[n_dof];
+	for(int n = 0; n < (n_dof); n++)
+		U[n] = new double[n_dof];
 
 	const double start=omp_get_wtime();
 	// create finite difference matrix
@@ -130,46 +236,31 @@ int main()
 		for(int j=1; j<J-1; j++){
 			for(int k=1; k<K-1; k++){
 				unsigned int p,q;
+				unsigned int t_011,t_111,t_211,t_101,t_121,t_110,t_112;
 				// I
-				three_d_to_two_d(i-1,j,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dx2i;
-				// cout<<U[2][2]<<endl;
-				
-				three_d_to_two_d(i,j,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] -= 2*dx2i;
-				
-				three_d_to_two_d(i+1,j,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dx2i;
+				three_d_to_one_d(i-1,j,k, I,J, t_011);
+				three_d_to_one_d(i,j,k, I,J, t_111);
+				three_d_to_one_d(i+1,j,k, I,J, t_211);
+				U[t_111][t_011] += dx2i;
+				U[t_111][t_111] += -2*dx2i;
+				U[t_111][t_211] += dx2i;
 
 				// J
-				three_d_to_two_d(i,j-1,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dy2i;
-				
-				three_d_to_two_d(i,j,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] -= 2*dy2i;
-				
-				three_d_to_two_d(i,j+1,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dy2i;
+				three_d_to_one_d(i,j-1,k, I,J, t_101);
+				three_d_to_one_d(i,j,k, I,J, t_111);
+				three_d_to_one_d(i,j+1,k, I,J, t_121);
+				U[t_111][t_101] += dy2i;
+				U[t_111][t_111] += -2*dy2i;
+				U[t_111][t_121] += dy2i;
 
 				// K
-				three_d_to_two_d(i,j,k-1, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dz2i;
-
-				three_d_to_two_d(i,j,k, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] -= 2*dz2i;
-				
-				three_d_to_two_d(i,j,k+1, I,J,P, p,q);
-				// if(p>=0 && p<P && q>=0 && q<Q)
-				U[p][q] += dz2i;
-				
+				three_d_to_one_d(i,j,k-1, I,J, t_110);
+				three_d_to_one_d(i,j,k, I,J, t_111);
+				three_d_to_one_d(i,j,k+1, I,J, t_112);
+				U[t_111][t_110] += dz2i;
+				U[t_111][t_111] += -2*dz2i;
+				U[t_111][t_112] += dz2i;
+								
 			}
 		}
 	}
@@ -178,9 +269,11 @@ int main()
 	cout<<end-start<<endl;
 	
 	// construct load vector
-	double* F = new double[P];	
-	for(int p=0; p<P; p++){
-	    F[p] = 1;
+	double* F = new double[n_dof];
+	for(int n=0; n<n_dof; n++){
+		unsigned int i,j,k;
+		one_d_to_three_d( n, I, J, i, j, k);
+	    F[n] = sin(i/I*pi)*sin(j/J*pi)*sin(k/K*pi);
     }
 
 	int n_bd=0;
@@ -191,12 +284,16 @@ int main()
 				if(i==0 || j==0 || k==0
 				   || i==(I-1) || j==(J-1) || k==(K-1) ){
 					n_bd++;
-					unsigned int p,q;
-					three_d_to_two_d(i,j,k, I,J,P, p,q);
+					unsigned int t;
+					three_d_to_one_d(i,j,k, I,J, t);
 
-					U[p][q] = 0;
+					for(int n=0; n<n_dof; n++){
+						U[n][t]=0;
+						U[t][n]=0;
+					}
+					U[t][t] = 1;
 				}
-					
+				
 			}
 		}
 	}
@@ -208,15 +305,60 @@ int main()
 	// 	cout<<endl;
 	// }
 
-	write_matrix(P,Q,U);
-	if(write_vector(P,F)) cout<<"fail"<<endl;
+	// save matrix and vector
+	if(write_matrix(n_dof,n_dof,U)) cout<<"write_matrix fail"<<endl;
+	if(write_vector(n_dof,F)) cout<<"write_vector fail"<<endl;
+
+	
+	// Jacobi method
+	double E=100000000;
+
+	// construct solution vector
+	double* u_new = new double[n_dof];
+	double* u_old = new double[n_dof];
+	for(int n=0; n<n_dof; n++){
+	    u_new[n] = 1.0;
+	    u_old[n] = 1.0;
+    }
+
+	// iteration counter
+	int ct = 0;
+	cout<<"Jacobi"<<endl;
+	while(E>tol && ct<max_iteration){
+		for(int i=0;i<n_dof;i++)
+			u_old[i]=u_new[i];
+		cout<<E<<endl;
+
+		for(int i=0; i<n_dof; i++){
+			double S=0;
+			for(int j=0; j<n_dof; j++){
+				if(i!=j)
+					S += U[i][j]*u_old[j]; 
+			}
+
+			u_new[i] = 1/U[i][i] * (F[i] - S);
+			// cout<<u_new[i]<<endl;
+		}
+		// check convergence
+		// cout<<"conv check"<<endl;
+		E = convergence_check(U, u_new, F, n_dof);
+		ct++;
+	}
+
+	// for(int i=0; i<n_dof; i++)
+	// 	cout<<u_new[i]<<endl;
+
+	write_results( u_new,
+				   n_dof,
+				   I,
+				   J,
+				   K );
 	
 	// cleanup
-	for(int q = 0; q < Q; q++) {
-		delete[] U[q];
+	for(int n = 0; n< n_dof; n++) {
+		delete[] U[n];
 	}
 	delete[] U;
-
 	delete[] F;
 	
 	return 0;
