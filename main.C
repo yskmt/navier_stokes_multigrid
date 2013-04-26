@@ -9,9 +9,10 @@ int three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
 					  const unsigned int k,
 					  const unsigned int I,
-					  const unsigned int J)
+					  const unsigned int J,
+					  unsigned int& t )
 {
-	return i + j*I + k*I*J;
+	t=i + j*I + k*I*J;
 }
 
 void one_d_to_two_d( const unsigned int t,
@@ -23,7 +24,7 @@ void one_d_to_two_d( const unsigned int t,
 	q = t/P;
 }
 
-void three_d_to_one_d( const unsigned int i,
+void three_d_to_two_d( const unsigned int i,
 					   const unsigned int j,
 					   const unsigned int k,
 					   const unsigned int I,
@@ -32,7 +33,9 @@ void three_d_to_one_d( const unsigned int i,
 					   unsigned int& p,
 					   unsigned int& q)
 {
-	one_d_to_two_d(three_d_to_one_d(i,j,k, I, J), P, p, q);
+	unsigned int t;
+    three_d_to_one_d(i,j,k, I, J, t); 
+	one_d_to_two_d(t, P, p, q);
 }
 
 
@@ -128,42 +131,42 @@ int main()
 			for(int k=1; k<K-1; k++){
 				unsigned int p,q;
 				// I
-				three_d_to_one_d(i-1,j,k, I,J,P, p,q);
+				three_d_to_two_d(i-1,j,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dx2i;
 				// cout<<U[2][2]<<endl;
 				
-				three_d_to_one_d(i,j,k, I,J,P, p,q);
+				three_d_to_two_d(i,j,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] -= 2*dx2i;
 				
-				three_d_to_one_d(i+1,j,k, I,J,P, p,q);
+				three_d_to_two_d(i+1,j,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dx2i;
 
 				// J
-				three_d_to_one_d(i,j-1,k, I,J,P, p,q);
+				three_d_to_two_d(i,j-1,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dy2i;
 				
-				three_d_to_one_d(i,j,k, I,J,P, p,q);
+				three_d_to_two_d(i,j,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] -= 2*dy2i;
 				
-				three_d_to_one_d(i,j+1,k, I,J,P, p,q);
+				three_d_to_two_d(i,j+1,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dy2i;
 
 				// K
-				three_d_to_one_d(i,j,k-1, I,J,P, p,q);
+				three_d_to_two_d(i,j,k-1, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dz2i;
 
-				three_d_to_one_d(i,j,k, I,J,P, p,q);
+				three_d_to_two_d(i,j,k, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] -= 2*dz2i;
 				
-				three_d_to_one_d(i,j,k+1, I,J,P, p,q);
+				three_d_to_two_d(i,j,k+1, I,J,P, p,q);
 				// if(p>=0 && p<P && q>=0 && q<Q)
 				U[p][q] += dz2i;
 				
@@ -180,22 +183,24 @@ int main()
 	    F[p] = 1;
     }
 
-	// // boundary conditions
-	// for(int i=0; i<I; i++){
-	// 	for(int j=0; j<J; j++){
-	// 		for(int k=0; k<K; k++){
-	// 			if(i==0 || j==0 || k==0
-	// 			   || i==(I-1) || j==(J-1) || k==(K-1) ){
-	// 				unsigned int p,q;
-	// 				three_d_to_one_d(i,j,k, I,J,P, p,q);
+	int n_bd=0;
+	// boundary conditions
+	for(int i=0; i<I; i++){
+		for(int j=0; j<J; j++){
+			for(int k=0; k<K; k++){
+				if(i==0 || j==0 || k==0
+				   || i==(I-1) || j==(J-1) || k==(K-1) ){
+					n_bd++;
+					unsigned int p,q;
+					three_d_to_two_d(i,j,k, I,J,P, p,q);
 
-	// 				U[p][q] = 1;
-	// 			}
+					U[p][q] = 0;
+				}
 					
-	// 		}
-	// 	}
-	// }
-	
+			}
+		}
+	}
+	cout<<"number of boundary nodes = "<<n_bd<<endl;
 	// for(int p=0; p<P; p++){
 	// 	for(int q=0; q<Q; q++){
 	// 		cout<<U[p][q]<<" ";
