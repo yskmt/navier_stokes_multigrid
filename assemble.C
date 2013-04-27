@@ -1,4 +1,5 @@
 #include "assemble.h"
+#include "utils.h"
 
 void fd_matrix( double** M,
 				cuint I, cuint J, cuint K,

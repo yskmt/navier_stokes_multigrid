@@ -12,6 +12,8 @@ const double pi=3.14159265359;
 using namespace std;
 
 typedef const unsigned int cuint;
+typedef unsigned int cint;
+typedef const double cdouble;
 
 void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,

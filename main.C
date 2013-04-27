@@ -49,13 +49,13 @@ int write_vector( cuint P,
 
 // write out the results
 int write_results( double* u,
-				   const int n_dof,
+				   cuint n_dof,
 				   cuint I,
 				   cuint J,
 				   cuint K,
-				   const double dx,
-				   const double dy,
-				   const double dz
+				   cdouble dx,
+				   cdouble dy,
+				   cdouble dz
 				   )
 {
 	// double*** results;    // 3D results definition;
@@ -119,106 +119,49 @@ int main()
 	cuint n_dof = I*J*K;
 	
 	// domain size
-	const double width = 1.0; 
-	const double length = 1.0;
-	const double height = 1.0;
+	cdouble width = 1.0; 
+	cdouble length = 1.0;
+	cdouble height = 1.0;
 
 	// domain cornders
-	const double x_min = 0.0;
-	const double y_min = 0.0;
-	const double z_min = 0.0;
-	const double x_max = x_min+width;
-	const double y_max = y_min+length;
-	const double z_max = z_min+height;
+	cdouble x_min = 0.0;
+	cdouble y_min = 0.0;
+	cdouble z_min = 0.0;
+	cdouble x_max = x_min+width;
+	cdouble y_max = y_min+length;
+	cdouble z_max = z_min+height;
 
 	// mesh size
-	const double dx = width/(I-1);
-	const double dy = length/(J-1);
-	const double dz = height/(K-1);
+	cdouble dx = width/(I-1);
+	cdouble dy = length/(J-1);
+	cdouble dz = height/(K-1);
 
 	// inverse of square of mesh sizes
-	const double dx2i = 1.0/(dx*dx);
-	const double dy2i = 1.0/(dy*dy);
-	const double dz2i = 1.0/(dz*dz);
+	cdouble dx2i = 1.0/(dx*dx);
+	cdouble dy2i = 1.0/(dy*dy);
+	cdouble dz2i = 1.0/(dz*dz);
 
 	// for jacobi method
-	const double tol = 0.01;
-	const int max_iteration = 100000;
-	
-	// initialize finite difference matrix
-	double** M = new double*[n_dof];
-	for(int n = 0; n < (n_dof); n++)
-		M[n] = new double[n_dof];
+	cdouble tol = 0.01;
+	cuint max_iteration = 100000;
+	cuint max_level=2;
 
-	const double start=omp_get_wtime();
-	// create finite difference matrix
-	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i);
-	
-	// construct load vector
-	double* F = new double[n_dof];
-	load_vector(F, n_dof, I,J,K);
-
-	// set boundary conditions
-	unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M);
-	
-
-	cout<<"number of boundary nodes = "<<n_bd<<endl;
-	// for(int p=0; p<P; p++){
-	// 	for(int q=0; q<Q; q++){
-	// 		cout<<M[p][q]<<" ";
-	// 	}
-	// 	cout<<endl;
-	// }
-
-	// save matrix and vector
-	// if(write_matrix(n_dof,n_dof,M)) cout<<"write_matrix fail"<<endl;
-	// if(write_vector(n_dof,F)) cout<<"write_vector fail"<<endl;
-
-	
-	// Jacobi method
-	double E=100000000;
-
-	// construct solution vector
-	double* u_new = new double[n_dof];
-	double* u_old = new double[n_dof];
-	// initial guess
-	for(int n=0; n<n_dof; n++){
-	    u_new[n] = 1.0;
-	    u_old[n] = 1.0;
-    }
-
-	// residual
-	double* R = new double[n_dof];
-
-	jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
-
-	cuint I_new = (I-1)/2;
-	cuint J_new = (J-1)/2;
-	cuint K_new = (K-1)/2;
-	cuint n_dof_new = I_new*J_new*K_new;
-	double* R_new = new double[n_dof_new];
-	restriction( R, R_new, I, J, K);
-
-	// for(int i=0; i<n_dof_new; i++)
-	// 	cout<<R_new[i]<<endl;
-	
-	const double end=omp_get_wtime();
+	cdouble start=omp_get_wtime();
+	double* F;
+	v_cycle( n_dof, I, J, K,
+			 dx2i, dy2i,  dz2i,
+			 tol, max_iteration,
+			 width, length, height, 0, max_level, F );
+	cdouble end=omp_get_wtime();
 
 	cout<<"wall clock time = "<<end-start<<endl;
-		
+	
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
 
-	write_results( u_new,
-				   n_dof,
-				   I, J, K, dx, dy, dz);
-	
-	// cleanup
-	for(int n = 0; n< n_dof; n++) {
-		delete[] M[n];
-	}
-	delete[] M;
-	delete[] F;
+	// write_results( u_new,
+	// 			   n_dof,
+	// 			   I, J, K, dx, dy, dz);
 	
 	return 0;
 }
