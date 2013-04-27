@@ -25,7 +25,7 @@ double convergence_check ( double** M,
 						   double* R,
 						   const int n_dof);
 
-void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
+double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
 			  cdouble tol, cuint max_iteration,
 			  cdouble width, cdouble length, cdouble height,

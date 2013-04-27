@@ -37,7 +37,7 @@ void jacobi( cdouble tol, const int max_iteration,
 	while(E>tol && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
-		// cout<<"E "<<E<<endl;
+		cout<<"E "<<E<<endl;
 		
 #pragma omp parallel for shared(M,F,u_old,u_new)
 		for(int i=0; i<n_dof; i++){
@@ -57,16 +57,17 @@ void jacobi( cdouble tol, const int max_iteration,
 		E = convergence_check(M, u_new, F, R, n_dof);
 		ct++;
 	}
+	cout<<"E "<<E<<endl;
 	
 	return;
 }
 
-void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
-			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
-			  cdouble tol, cuint max_iteration,
-			  cdouble width, cdouble length, cdouble height,
-			  cuint level, cuint max_level,
-			  double* F )
+double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
+				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
+				 cdouble tol, cuint max_iteration,
+				 cdouble width, cdouble length, cdouble height,
+				 cuint level, cuint max_level,
+				 double* F )
 {			
 	// initialize finite difference matrix
 	double** M = new double*[n_dof];
@@ -88,7 +89,7 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	// 	F = R;
 	// }
 	// set boundary conditions
-	unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M);
+	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);
 	
 	// cout<<"number of boundary nodes = "<<n_bd<<endl;
 
@@ -119,7 +120,7 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 		// cout<<"R"<<endl;
 		// for(int i=0; i<n_dof; i++)
 		// 	cout<<R[i]<<endl;
-
+		
 	}
 	else{
 		// inexact Jacobi method
@@ -164,10 +165,10 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	if (level==0)
 		delete[] F;
 
-	delete[] u_new, u_old;
+	delete[] u_old;
 	delete[] R, R_new;
 	
-	return;
+	return u_new;
 }
 
 // 3D full weight restriction

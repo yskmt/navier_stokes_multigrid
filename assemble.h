@@ -39,7 +39,8 @@ int boundary_conditins( cuint n_dof,
 						cuint I,
 						cuint J,
 						cuint K,
-						double** M
+						double** M,
+						double* F
 						);
 
 #endif //ASSEMBLE_H

@@ -1,13 +1,14 @@
 #include "jacobi.h"
 #include "assemble.h"
 #include "utils.h"
+#include "IO.h"
 
 int main()
 {
 	// number of nodes in each dimension
-	cuint I=15; // 2^n-1
-	cuint J=15;
-	cuint K=15;
+	cuint I=7; // 2^n-1
+	cuint J=7;
+	cuint K=7;
 	cuint n_dof = I*J*K;
 	
 	// domain size
@@ -36,11 +37,11 @@ int main()
 	// for jacobi method
 	cdouble tol = 0.01;
 	cuint max_iteration = 100000;
-	cuint max_level=2;
+	cuint max_level=0;
 
 	cdouble start=omp_get_wtime();
 	double* F;
-	v_cycle( n_dof, I, J, K,
+	double* u = v_cycle( n_dof, I, J, K,
 			 dx2i, dy2i,  dz2i,
 			 tol, max_iteration,
 			 width, length, height, 0, max_level, F );
@@ -51,9 +52,11 @@ int main()
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
 
-	// write_results( u_new,
-	// 			   n_dof,
-	// 			   I, J, K, dx, dy, dz);
+	write_results( u,
+				   n_dof,
+				   I, J, K, dx, dy, dz);
+	
+	delete[] u;
 	
 	return 0;
 }

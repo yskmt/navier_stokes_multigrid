@@ -9,30 +9,48 @@ void fd_matrix( double** M,
 				const double dz2i
 				)
 {
-#pragma omp parallel for shared(M)
-	for(int i=1; i<I-1; i++){
-		for(int j=1; j<J-1; j++){
-			for(int k=1; k<K-1; k++){
+// #pragma omp parallel for shared(M)
+	for(int i=0; i<I; i++){
+		for(int j=0; j<J; j++){
+			for(int k=0; k<K; k++){
 				unsigned int p,q;
 				unsigned int t_011,t_111,t_211,t_101,t_121,t_110,t_112;
-				three_d_to_one_d(i-1,j,k, I,J, t_011);
 				three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i+1,j,k, I,J, t_211);
-				three_d_to_one_d(i,j-1,k, I,J, t_101);
-				three_d_to_one_d(i,j+1,k, I,J, t_121);
-				three_d_to_one_d(i,j,k-1, I,J, t_110);
-				three_d_to_one_d(i,j,k+1, I,J, t_112);
+				if(i==0)
+					three_d_to_one_d(I-1,j,k, I,J, t_011);
+				else
+					three_d_to_one_d(i-1,j,k, I,J, t_011);
+				if(i==(I-1))
+					three_d_to_one_d(0,j,k, I,J, t_211);
+				else
+					three_d_to_one_d(i+1,j,k, I,J, t_211);
 
+				if(j==0)
+					three_d_to_one_d(i,J-1,k, I,J, t_101);
+				else
+					three_d_to_one_d(i,j-1,k, I,J, t_101);
+				if(j==(J-1))
+					three_d_to_one_d(i,0,k, I,J, t_121);
+				else
+					three_d_to_one_d(i,j+1,k, I,J, t_121);
+								
+				if(k==0)
+					three_d_to_one_d(i,j,K-1, I,J, t_110);
+				else
+					three_d_to_one_d(i,j,k-1, I,J, t_110);
+				if(k==(K-1))
+					three_d_to_one_d(i,j,0, I,J, t_112);
+				else
+					three_d_to_one_d(i,j,k+1, I,J, t_112);
+				
 				// I
 				M[t_111][t_011] += dx2i;
 				M[t_111][t_111] += -2*dx2i;
 				M[t_111][t_211] += dx2i;
-
 				// J
 				M[t_111][t_101] += dy2i;
 				M[t_111][t_111] += -2*dy2i;
 				M[t_111][t_121] += dy2i;
-
 				// K
 				M[t_111][t_110] += dz2i;
 				M[t_111][t_111] += -2*dz2i;
@@ -55,40 +73,52 @@ void load_vector( double* F,
 	for(int n=0; n<n_dof; n++){
 		unsigned int i,j,k;
 		one_d_to_three_d( n, I, J, i, j, k);
-	    F[n] = sin(i/(I-1)*pi)*sin(j/(J-1)*pi)*sin(k/(K-1)*pi);
+	    // F[n] = sin(i/(I)*2*pi)*sin(j/(J)*2*pi)*sin(k/(K)*2*pi);
+	    F[n] = sin(double(i)/double(I)*2*pi) * sin(double(j)/double(J)*2*pi)
+			* sin(double(k)/double(K)*2*pi);
     }
 
 }
 
 
-int boundary_conditins( const unsigned int n_dof,
-						const unsigned int I,
-						const unsigned int J,
-						const unsigned int K,
-						double** M
-						)
+ int boundary_conditins( const unsigned int n_dof,
+		const unsigned int I,
+		const unsigned int J,
+		const unsigned int K,
+		double** M,
+		double* F
+		)
 {
 	int n_bd=0;
 	// boundary conditions
-	#pragma omp parallel for shared(M)
-	for(int i=0; i<I; i++){
-		for(int j=0; j<J; j++){
-			for(int k=0; k<K; k++){
-				if(i==0 || j==0 || k==0
-					|| i==(I-1) || j==(J-1) || k==(K-1) ){
-					n_bd++;
-					unsigned int t;
-					three_d_to_one_d(i,j,k, I,J, t);
+	uint t;
+	three_d_to_one_d(0,0,0, I,J, t);		
+	for(int n=0; n<n_dof; n++){
+	M[n][t]=0;
+	M[t][n]=0;
+}
+	M[t][t] = 1;
+	F[t] = 1;
+	
+	// #pragma omp parallel for shared(M)
+	// for(int i=0; i<I; i++){
+	// 	for(int j=0; j<J; j++){
+	// 		for(int k=0; k<K; k++){
+	// 			if(i==0 || j==0 || k==0
+	// 				|| i==(I-1) || j==(J-1) || k==(K-1) ){
+	// 				n_bd++;
+	// 				unsigned int t;
+	// 				three_d_to_one_d(i,j,k, I,J, t);
 					
-					for(int n=0; n<n_dof; n++){
-						M[n][t]=0;
-						M[t][n]=0;
-					}
-					M[t][t] = 1;
-				}
-			}
-		}
-	}
+	// 				for(int n=0; n<n_dof; n++){
+	// 					M[n][t]=0;
+	// 					M[t][n]=0;
+	// 				}
+	// 				M[t][t] = 1;
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return n_bd;
 }
