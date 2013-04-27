@@ -1,8 +1,14 @@
 # Makefile: CSE391 Final Project
 # Geometric Multigrid
 
-multigrid: main.C
-	g++ main.C -fopenmp -o multigrid
+multigrid: jacobi.o main.o
+	g++ jacobi.o main.o -fopenmp -o multigrid
+
+jacobi.o: jacobi.C jacobi.h
+	g++ jacobi.C -c -fopenmp
+
+main.o: main.C
+	g++ main.C -c -fopenmp
 
 run:
 	@ export OMP_NUM_THREADS=1

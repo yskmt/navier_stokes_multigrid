@@ -1,12 +1,5 @@
-#include <iostream>
-#include <cmath>
-#include <fstream>
-#include <omp.h>
-
-using namespace std;
-
-#define pi 3.1415
-
+#include "jacobi.h"
+		
 void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
 					  const unsigned int k,
@@ -27,29 +20,6 @@ void one_d_to_three_d( const unsigned int t,
 	k = t/(I*J);
 	j = (t-k*I*J)/I;
 	i = t-j*I - k*I*J;
-}
-
-void one_d_to_two_d( const unsigned int t,
-					 const unsigned int P,
-					 unsigned int& p,
-					 unsigned int& q )
-{
-	p = t%P;
-	q = t/P;
-}
-
-void three_d_to_two_d( const unsigned int i,
-					   const unsigned int j,
-					   const unsigned int k,
-					   const unsigned int I,
-					   const unsigned int J,
-					   const unsigned int P,
-					   unsigned int& p,
-					   unsigned int& q)
-{
-	unsigned int t;
-    three_d_to_one_d(i,j,k, I, J, t); 
-	one_d_to_two_d(t, P, p, q);
 }
 
 
@@ -159,33 +129,6 @@ int write_results( double* u,
 
 }
 
-
-double convergence_check ( double** M,
-						   double* U,
-						   double* F,
-						   const int n_dof)
-{
-	double* R = new double[n_dof];
-	for(int n=0; n<n_dof; n++){
-	    R[n] = 0.0;
-    }
-	
-	for(int i=0; i<n_dof; i++){
-		for(int j=0; j<n_dof; j++){
-			R[i] += M[i][j]*U[j];
-		}
-		R[i] -= F[i];
-	}
-
-	double E=0;
-	for(int i=0; i<n_dof; i++){
-		// cout<<R[i]<<endl;
-		E+= R[i]*R[i];
-	}
-	
-	return E; 
-}
-
 int main()
 {
 	// number of grids
@@ -225,13 +168,13 @@ int main()
 	const int max_iteration = 100000;
 	
 	// initialize finite difference matrix
-	double** U = new double*[n_dof];
+	double** M = new double*[n_dof];
 	for(int n = 0; n < (n_dof); n++)
-		U[n] = new double[n_dof];
+		M[n] = new double[n_dof];
 
 	const double start=omp_get_wtime();
 	// create finite difference matrix
-	// #pragma omp parallel for shared(U)
+	#pragma omp parallel for shared(M)
 	for(int i=1; i<I-1; i++){
 		for(int j=1; j<J-1; j++){
 			for(int k=1; k<K-1; k++){
@@ -241,35 +184,33 @@ int main()
 				three_d_to_one_d(i-1,j,k, I,J, t_011);
 				three_d_to_one_d(i,j,k, I,J, t_111);
 				three_d_to_one_d(i+1,j,k, I,J, t_211);
-				U[t_111][t_011] += dx2i;
-				U[t_111][t_111] += -2*dx2i;
-				U[t_111][t_211] += dx2i;
+				M[t_111][t_011] += dx2i;
+				M[t_111][t_111] += -2*dx2i;
+				M[t_111][t_211] += dx2i;
 
 				// J
 				three_d_to_one_d(i,j-1,k, I,J, t_101);
-				three_d_to_one_d(i,j,k, I,J, t_111);
+				// three_d_to_one_d(i,j,k, I,J, t_111);
 				three_d_to_one_d(i,j+1,k, I,J, t_121);
-				U[t_111][t_101] += dy2i;
-				U[t_111][t_111] += -2*dy2i;
-				U[t_111][t_121] += dy2i;
+				M[t_111][t_101] += dy2i;
+				M[t_111][t_111] += -2*dy2i;
+				M[t_111][t_121] += dy2i;
 
 				// K
 				three_d_to_one_d(i,j,k-1, I,J, t_110);
-				three_d_to_one_d(i,j,k, I,J, t_111);
+				// three_d_to_one_d(i,j,k, I,J, t_111);
 				three_d_to_one_d(i,j,k+1, I,J, t_112);
-				U[t_111][t_110] += dz2i;
-				U[t_111][t_111] += -2*dz2i;
-				U[t_111][t_112] += dz2i;
+				M[t_111][t_110] += dz2i;
+				M[t_111][t_111] += -2*dz2i;
+				M[t_111][t_112] += dz2i;
 								
 			}
 		}
 	}
-	const double end=omp_get_wtime();
-
-	cout<<end-start<<endl;
 	
 	// construct load vector
 	double* F = new double[n_dof];
+	#pragma omp parallel for shared(F)
 	for(int n=0; n<n_dof; n++){
 		unsigned int i,j,k;
 		one_d_to_three_d( n, I, J, i, j, k);
@@ -278,6 +219,7 @@ int main()
 
 	int n_bd=0;
 	// boundary conditions
+	#pragma omp parallel for shared(M)
 	for(int i=0; i<I; i++){
 		for(int j=0; j<J; j++){
 			for(int k=0; k<K; k++){
@@ -288,10 +230,10 @@ int main()
 					three_d_to_one_d(i,j,k, I,J, t);
 
 					for(int n=0; n<n_dof; n++){
-						U[n][t]=0;
-						U[t][n]=0;
+						M[n][t]=0;
+						M[t][n]=0;
 					}
-					U[t][t] = 1;
+					M[t][t] = 1;
 				}
 				
 			}
@@ -300,14 +242,14 @@ int main()
 	cout<<"number of boundary nodes = "<<n_bd<<endl;
 	// for(int p=0; p<P; p++){
 	// 	for(int q=0; q<Q; q++){
-	// 		cout<<U[p][q]<<" ";
+	// 		cout<<M[p][q]<<" ";
 	// 	}
 	// 	cout<<endl;
 	// }
 
 	// save matrix and vector
-	if(write_matrix(n_dof,n_dof,U)) cout<<"write_matrix fail"<<endl;
-	if(write_vector(n_dof,F)) cout<<"write_vector fail"<<endl;
+	// if(write_matrix(n_dof,n_dof,M)) cout<<"write_matrix fail"<<endl;
+	// if(write_vector(n_dof,F)) cout<<"write_vector fail"<<endl;
 
 	
 	// Jacobi method
@@ -316,35 +258,18 @@ int main()
 	// construct solution vector
 	double* u_new = new double[n_dof];
 	double* u_old = new double[n_dof];
+	// initial guess
 	for(int n=0; n<n_dof; n++){
 	    u_new[n] = 1.0;
 	    u_old[n] = 1.0;
     }
 
-	// iteration counter
-	int ct = 0;
-	cout<<"Jacobi"<<endl;
-	while(E>tol && ct<max_iteration){
-		for(int i=0;i<n_dof;i++)
-			u_old[i]=u_new[i];
-		cout<<E<<endl;
+	jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E);
+	
+	const double end=omp_get_wtime();
 
-		for(int i=0; i<n_dof; i++){
-			double S=0;
-			for(int j=0; j<n_dof; j++){
-				if(i!=j)
-					S += U[i][j]*u_old[j]; 
-			}
-
-			u_new[i] = 1/U[i][i] * (F[i] - S);
-			// cout<<u_new[i]<<endl;
-		}
-		// check convergence
-		// cout<<"conv check"<<endl;
-		E = convergence_check(U, u_new, F, n_dof);
-		ct++;
-	}
-
+	cout<<"wall clock time = "<<end-start<<endl;
+		
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
 
@@ -356,9 +281,9 @@ int main()
 	
 	// cleanup
 	for(int n = 0; n< n_dof; n++) {
-		delete[] U[n];
+		delete[] M[n];
 	}
-	delete[] U;
+	delete[] M;
 	delete[] F;
 	
 	return 0;
