@@ -1,31 +1,10 @@
 #include "jacobi.h"
-		
-void three_d_to_one_d( const unsigned int i,
-					  const unsigned int j,
-					  const unsigned int k,
-					  const unsigned int I,
-					  const unsigned int J,
-					  unsigned int& t )
-{
-	t=i + j*I + k*I*J;
-}
-
-void one_d_to_three_d( const unsigned int t,
-					   const unsigned int I,
-					   const unsigned int J,
-					   unsigned int& i,
-					   unsigned int& j,
-					   unsigned int& k)
-{
-	k = t/(I*J);
-	j = (t-k*I*J)/I;
-	i = t-j*I - k*I*J;
-}
-
+#include "assemble.h"
+#include "utils.h"
 
 // write out the sparse matrix
-int write_matrix(const unsigned int P,
-				 const unsigned int Q,
+int write_matrix(cuint P,
+				 cuint Q,
 				 double** U)
 {
 	ofstream file_out;
@@ -49,7 +28,7 @@ int write_matrix(const unsigned int P,
 
 
 // write out the sparse matrix
-int write_vector( const unsigned int P,
+int write_vector( cuint P,
 				  double* F)
 {
 	ofstream file_out;
@@ -71,9 +50,13 @@ int write_vector( const unsigned int P,
 // write out the results
 int write_results( double* u,
 				   const int n_dof,
-				   const unsigned int I,
-				   const unsigned int J,
-				   const unsigned int K )
+				   cuint I,
+				   cuint J,
+				   cuint K,
+				   const double dx,
+				   const double dy,
+				   const double dz
+				   )
 {
 	// double*** results;    // 3D results definition;
 	// // begin memory allocation
@@ -113,7 +96,7 @@ int write_results( double* u,
 	unsigned int i,j,k;
 	for(int n=0; n<n_dof; n++){
 		one_d_to_three_d( n, I, J, i, j, k);
-		file_out<<i<<" "<<j<<" "<<k<<endl;
+		file_out<<i*dx<<" "<<j*dy<<" "<<k*dz<<endl;
 	}
 	
 	file_out<<"POINT_DATA "<<n_dof<<endl;
@@ -123,23 +106,18 @@ int write_results( double* u,
 		file_out<<u[n]<<endl;
 	}
 			
-	
-		
 	file_out.close();
 
 }
 
 int main()
 {
-	// number of grids
-	const unsigned int I=16;
-	const unsigned int J=16;
-	const unsigned int K=16;
-	const unsigned int n_dof = I*J*K;
+	// number of nodes in each dimension
+	cuint I=7; // 2^n-1
+	cuint J=7;
+	cuint K=7;
+	cuint n_dof = I*J*K;
 	
-	const unsigned int P = sqrt(I*J*K);
-	const unsigned int Q = P;
-
 	// domain size
 	const double width = 1.0; 
 	const double length = 1.0;
@@ -154,9 +132,9 @@ int main()
 	const double z_max = z_min+height;
 
 	// mesh size
-	const double dx = width/I;
-	const double dy = length/J;
-	const double dz = height/K;
+	const double dx = width/(I-1);
+	const double dy = length/(J-1);
+	const double dz = height/(K-1);
 
 	// inverse of square of mesh sizes
 	const double dx2i = 1.0/(dx*dx);
@@ -174,71 +152,16 @@ int main()
 
 	const double start=omp_get_wtime();
 	// create finite difference matrix
-	#pragma omp parallel for shared(M)
-	for(int i=1; i<I-1; i++){
-		for(int j=1; j<J-1; j++){
-			for(int k=1; k<K-1; k++){
-				unsigned int p,q;
-				unsigned int t_011,t_111,t_211,t_101,t_121,t_110,t_112;
-				// I
-				three_d_to_one_d(i-1,j,k, I,J, t_011);
-				three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i+1,j,k, I,J, t_211);
-				M[t_111][t_011] += dx2i;
-				M[t_111][t_111] += -2*dx2i;
-				M[t_111][t_211] += dx2i;
-
-				// J
-				three_d_to_one_d(i,j-1,k, I,J, t_101);
-				// three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i,j+1,k, I,J, t_121);
-				M[t_111][t_101] += dy2i;
-				M[t_111][t_111] += -2*dy2i;
-				M[t_111][t_121] += dy2i;
-
-				// K
-				three_d_to_one_d(i,j,k-1, I,J, t_110);
-				// three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i,j,k+1, I,J, t_112);
-				M[t_111][t_110] += dz2i;
-				M[t_111][t_111] += -2*dz2i;
-				M[t_111][t_112] += dz2i;
-								
-			}
-		}
-	}
+	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i);
 	
 	// construct load vector
 	double* F = new double[n_dof];
-	#pragma omp parallel for shared(F)
-	for(int n=0; n<n_dof; n++){
-		unsigned int i,j,k;
-		one_d_to_three_d( n, I, J, i, j, k);
-	    F[n] = sin(i/I*pi)*sin(j/J*pi)*sin(k/K*pi);
-    }
+	load_vector(F, n_dof, I,J,K);
 
-	int n_bd=0;
-	// boundary conditions
-	#pragma omp parallel for shared(M)
-	for(int i=0; i<I; i++){
-		for(int j=0; j<J; j++){
-			for(int k=0; k<K; k++){
-				if(i==0 || j==0 || k==0
-				   || i==(I-1) || j==(J-1) || k==(K-1) ){
-					n_bd++;
-					unsigned int t;
-					three_d_to_one_d(i,j,k, I,J, t);
+	// set boundary conditions
+	unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M);
+	
 
-					for(int n=0; n<n_dof; n++){
-						M[n][t]=0;
-						M[t][n]=0;
-					}
-					M[t][t] = 1;
-				}
-				
-			}
-		}
-	}
 	cout<<"number of boundary nodes = "<<n_bd<<endl;
 	// for(int p=0; p<P; p++){
 	// 	for(int q=0; q<Q; q++){
@@ -264,7 +187,20 @@ int main()
 	    u_old[n] = 1.0;
     }
 
-	jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E);
+	// residual
+	double* R = new double[n_dof];
+
+	jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
+
+	cuint I_new = (I-1)/2;
+	cuint J_new = (J-1)/2;
+	cuint K_new = (K-1)/2;
+	cuint n_dof_new = I_new*J_new*K_new;
+	double* R_new = new double[n_dof_new];
+	restriction( R, R_new, I, J, K);
+
+	// for(int i=0; i<n_dof_new; i++)
+	// 	cout<<R_new[i]<<endl;
 	
 	const double end=omp_get_wtime();
 
@@ -275,9 +211,7 @@ int main()
 
 	write_results( u_new,
 				   n_dof,
-				   I,
-				   J,
-				   K );
+				   I, J, K, dx, dy, dz);
 	
 	// cleanup
 	for(int n = 0; n< n_dof; n++) {
