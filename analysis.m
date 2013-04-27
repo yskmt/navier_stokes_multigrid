@@ -12,8 +12,9 @@ P = zeros(n,1);
 
 % [P,dP,Z] = jacobi(M,F,P,0.00001,10000);
 
+spy(M);
 
-U = load('results.dat');
+% U = load('results.dat');
 
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
 

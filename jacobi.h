@@ -31,4 +31,13 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 			  cdouble width, cdouble length, cdouble height,
 			  cuint level, cuint max_level, double* F);
 
+// 3D full weight restriction
+void restriction( double* R, double* R_new, cuint I, cuint J, cuint K);
+
+
+void coarse_map( double* R, double* R_new,
+				 unsigned int nei[][3][3],
+				 cuint i, cuint j, cuint k, cuint t_new );
+
+
 #endif //JACOBI_H

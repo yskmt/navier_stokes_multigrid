@@ -13,10 +13,13 @@ using namespace std;
 
 // 3d full weighting stencil
 // [[1 2 1; 2 4 2; 1 2 1] [2 4 2; 4 8 4; 2 4 2]; [1 2 1; 2 4 2; 1 2 1]];
-cuint fw_stencil[3][3][3] =
-	{ {{1,2,1}, {2,4,2}, {1,2,1}},
-		{{2,4,2}, {4,8,4}, {2,4,2}},
-			{{1,2,1}, {2,4,2}, {1,2,1}}};
+cdouble fw_stencil[3][3][3] =
+	{ {{1.0/16.0,2.0/16.0,1.0/16.0}, {2.0/16.0,4.0/16.0,2.0/16.0},
+	   {1.0/16.0,2.0/16.0,1.0/16.0}},
+		{{2.0/16.0,4.0/16.0,2.0/16.0}, {4.0/16.0,8.0/16.0,4.0/16.0},
+		 {2.0/16.0,4.0/16.0,2.0/16.0}},
+			{{1.0/16.0,2.0/16.0,1.0/16.0}, {2.0/16.0,4.0/16.0,2.0/16.0},
+			 {1.0/16.0,2.0/16.0,1.0/16.0}}};
 
 
 void fd_matrix( double** M,
@@ -38,13 +41,5 @@ int boundary_conditins( cuint n_dof,
 						cuint K,
 						double** M
 						);
-
-// 3D full weight restriction
-void restriction( double* R, double* R_new, cuint I, cuint J, cuint K);
-
-
-void coarse_map( double* R, double* R_new,
-				 unsigned int nei[][3][3],
-				 cuint i, cuint j, cuint k, cuint t_new );
 
 #endif //ASSEMBLE_H

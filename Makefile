@@ -1,8 +1,8 @@
 # Makefile: CSE391 Final Project
 # Geometric Multigrid
 
-multigrid: jacobi.o main.o assemble.o utils.o
-	g++ jacobi.o main.o assemble.o utils.o -fopenmp -o multigrid
+multigrid: jacobi.o main.o assemble.o utils.o IO.o
+	g++ jacobi.o main.o assemble.o utils.o IO.o -fopenmp -o multigrid
 
 jacobi.o: jacobi.C jacobi.h
 	g++ jacobi.C -c -fopenmp
@@ -12,6 +12,9 @@ assemble.o: assemble.C assemble.h utils.C utils.h
 
 utils.o: utils.C utils.h
 	g++ utils.C -c -fopenmp
+
+IO.o: IO.C IO.h
+	g++ IO.C -c -fopenmp
 
 main.o: main.C
 	g++ main.C -c -fopenmp

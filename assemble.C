@@ -1,48 +1,46 @@
 #include "assemble.h"
 #include "utils.h"
 
+// 2nd order stencil
 void fd_matrix( double** M,
 				cuint I, cuint J, cuint K,
 				const double dx2i,
 				const double dy2i,
 				const double dz2i
-			   )
+				)
 {
-	#pragma omp parallel for shared(M)
+#pragma omp parallel for shared(M)
 	for(int i=1; i<I-1; i++){
 		for(int j=1; j<J-1; j++){
 			for(int k=1; k<K-1; k++){
 				unsigned int p,q;
 				unsigned int t_011,t_111,t_211,t_101,t_121,t_110,t_112;
-				// I
 				three_d_to_one_d(i-1,j,k, I,J, t_011);
 				three_d_to_one_d(i,j,k, I,J, t_111);
 				three_d_to_one_d(i+1,j,k, I,J, t_211);
+				three_d_to_one_d(i,j-1,k, I,J, t_101);
+				three_d_to_one_d(i,j+1,k, I,J, t_121);
+				three_d_to_one_d(i,j,k-1, I,J, t_110);
+				three_d_to_one_d(i,j,k+1, I,J, t_112);
+
+				// I
 				M[t_111][t_011] += dx2i;
 				M[t_111][t_111] += -2*dx2i;
 				M[t_111][t_211] += dx2i;
 
 				// J
-				three_d_to_one_d(i,j-1,k, I,J, t_101);
-				// three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i,j+1,k, I,J, t_121);
 				M[t_111][t_101] += dy2i;
 				M[t_111][t_111] += -2*dy2i;
 				M[t_111][t_121] += dy2i;
 
 				// K
-				three_d_to_one_d(i,j,k-1, I,J, t_110);
-				// three_d_to_one_d(i,j,k, I,J, t_111);
-				three_d_to_one_d(i,j,k+1, I,J, t_112);
 				M[t_111][t_110] += dz2i;
 				M[t_111][t_111] += -2*dz2i;
 				M[t_111][t_112] += dz2i;
-								
+
 			}
 		}
 	}
-
-
 
 }
 
@@ -95,36 +93,3 @@ int boundary_conditins( const unsigned int n_dof,
 	return n_bd;
 }
  
-// 3D full weight restriction
-void restriction( double* R, double* R_new, cuint I, cuint J, cuint K)
-{
-	cuint I_new = (I-1)/2;
-	cuint J_new = (J-1)/2;
-	cuint K_new = (K-1)/2;
-	
-	unsigned int nei[3][3][3];
-	for(int i=1; i<I-1; i+=2){
-		for(int j=1; j<J-1; j+=2){
-			for(int k=1; k<K-1; k+=2){
-				get_neighbor( nei, i,j,k, I,J,K);
-				// get new index
-				unsigned int t_new;
-				three_d_to_one_d( (i-1)/2, (j-1)/2, (k-1)/2, I_new, J_new, t_new);
-				coarse_map( R, R_new, nei, i,j,k, t_new);
-			}
-		}
-	}
-}
-
- void coarse_map( double* R, double* R_new,
-		unsigned int nei[][3][3], cuint i, cuint j, cuint k, cuint t_new )
-{
-	for(int p=0; p<3; p++){
-		for(int q=0; q<3; q++){
-			for(int r=0; r<3; r++){
-				R_new[t_new] += R[nei[p][q][r]]*fw_stencil[p][q][r];
-			}
-		}
-	}
-
-}
