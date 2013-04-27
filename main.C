@@ -113,9 +113,9 @@ int write_results( double* u,
 int main()
 {
 	// number of nodes in each dimension
-	cuint I=7; // 2^n-1
-	cuint J=7;
-	cuint K=7;
+	cuint I=15; // 2^n-1
+	cuint J=15;
+	cuint K=15;
 	cuint n_dof = I*J*K;
 	
 	// domain size

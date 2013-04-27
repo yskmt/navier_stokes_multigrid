@@ -110,8 +110,8 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	double* R_new;
 	
 	// Jacobi method
-	cout<<"level: "<<level<<endl;
-	jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
+	cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
+	jacobi(tol, 5, n_dof, u_new, u_old, M, F, E, R);
 	cout<<E<<endl;
 	
 	if( level<max_level){
@@ -135,8 +135,9 @@ void v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	
 		restriction( R, R_new, I, J, K);
 
+		// cout<<"R_new"<<endl;
 		// for(int i=0; i<n_dof_new; i++)
-		// 	cout<<R_new[i]<<endl;
+			// cout<<R_new[i]<<endl;
 
 		// v_cycle on the coarse grid
 		v_cycle( n_dof_new, I_new, J_new, K_new,
