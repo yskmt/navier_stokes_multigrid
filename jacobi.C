@@ -34,6 +34,7 @@ void jacobi( cdouble tol, const int max_iteration,
 {
 	// iteration counter
 	int ct = 0;
+
 	while(E>tol && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
@@ -46,7 +47,6 @@ void jacobi( cdouble tol, const int max_iteration,
 				if(i!=j)
 					S += M[i][j]*u_old[j]; 
 			}
-			
 			u_new[i] = 1/M[i][i] * (F[i] - S);
 			// cout<<u_new[i]<<endl;
 		}
@@ -89,22 +89,26 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	// else{
 	// 	F = R;
 	// }
-	// set boundary conditions
+	// set dirichlet boundary conditions
 	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);
 	
 	// cout<<"number of boundary nodes = "<<n_bd<<endl;
 
 	// save matrix and vector
-	if(write_matrix(n_dof,n_dof,M)) cout<<"write_matrix fail"<<endl;
-	if(write_vector(n_dof,F)) cout<<"write_vector fail"<<endl;
+	char matrix_file[100];
+	char vector_file[100];
+	sprintf(matrix_file, "matrix_%i.dat", level);
+	sprintf(vector_file, "vector_%i.dat", level);
+	if(write_matrix(n_dof,n_dof,M,matrix_file)) cout<<"write_matrix fail"<<endl;
+	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
 	double* u_new = new double[n_dof];
 	double* u_old = new double[n_dof];
 	// initial guess
 	for(int n=0; n<n_dof; n++){
-	    u_new[n] = 1.0;
-	    u_old[n] = 1.0;
+	    u_new[n] = 0.0;
+	    u_old[n] = 0.0;
     }
 
 	// residual and error
@@ -115,6 +119,7 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	if( level==max_level){
 		// exact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
+
 		jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
 
 		// cout<<"E: "<<E<<endl;
@@ -130,9 +135,9 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 		// cout<<E<<endl;
 		
 		// Restrict the residual
-		cuint I_new = (I-1)/2;
-		cuint J_new = (J-1)/2;
-		cuint K_new = (K-1)/2;
+		cuint I_new = (I+1)/2;
+		cuint J_new = (J+1)/2;
+		cuint K_new = (K+1)/2;
 		cuint n_dof_new = I_new*J_new*K_new;
 		R_new = new double[n_dof_new];
 
@@ -146,9 +151,12 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 		cdouble dy2i_new = 1.0/(dy_new*dy_new);
 		cdouble dz2i_new = 1.0/(dz_new*dz_new);
 
-		// restric residual to the coarse grid
-		restriction( R, R_new, I, J, K);
+		// for(int i=0; i<n_dof; i++)
+		// 	if(R[i]!=R[i]) cout<<i<<" is nan"<<endl;
 		
+		// restric residual to the coarse grid
+		restriction( R, R_new, I, J, K, I_new, J_new, K_new);
+
 		// v_cycle on the coarse grid
 		v_cycle( n_dof_new, I_new, J_new, K_new,
 				 dx2i_new, dy2i_new, dz2i_new,
@@ -173,20 +181,17 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 }
 
 // 3D full weight restriction
-void restriction( double* R, double* R_new, cuint I, cuint J, cuint K)
-{
-	cuint I_new = (I-1)/2;
-	cuint J_new = (J-1)/2;
-	cuint K_new = (K-1)/2;
-	
+void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
+				  cuint I_new, cuint J_new, cuint K_new )
+{	
 	unsigned int nei[3][3][3];
-	for(int i=1; i<I-1; i+=2){
-		for(int j=1; j<J-1; j+=2){
-			for(int k=1; k<K-1; k+=2){
+	for(int i=0; i<I; i+=2){
+		for(int j=0; j<J; j+=2){
+			for(int k=0; k<K; k+=2){
 				get_neighbor( nei, i,j,k, I,J,K);
 				// get new index
-				unsigned int t_new;
-				three_d_to_one_d( (i-1)/2, (j-1)/2, (k-1)/2, I_new, J_new, t_new);
+				uint t_new;
+				three_d_to_one_d( i/2, j/2, k/2, I_new, J_new, t_new);
 				coarse_map( R, R_new, nei, i,j,k, t_new);
 			}
 		}
@@ -195,8 +200,10 @@ void restriction( double* R, double* R_new, cuint I, cuint J, cuint K)
 
 // map from fine to coarse grid
 void coarse_map( double* R, double* R_new,
-				 unsigned int nei[][3][3], cuint i, cuint j, cuint k, cuint t_new )
+				 uint nei[][3][3], cuint i, cuint j, cuint k, cuint t_new )
 {
+	// initialize to 0 (otherwise nan can )
+	R_new[t_new] = 0.0;
 	for(int p=0; p<3; p++){
 		for(int q=0; q<3; q++){
 			for(int r=0; r<3; r++){

@@ -3,10 +3,11 @@
 // write out the sparse matrix
 int write_matrix(cuint P,
 				 cuint Q,
-				 double** U)
+				 double** U,
+				 char* file_name)
 {
 	ofstream file_out;
-	file_out.open ("matrix.dat");
+	file_out.open (file_name);
 
 	if(!file_out.is_open()){
 		return 1;
@@ -27,10 +28,11 @@ int write_matrix(cuint P,
 
 // write out the sparse matrix
 int write_vector( cuint P,
-				  double* F)
+				  double* F,
+				  char* file_name)
 {
 	ofstream file_out;
-	file_out.open ("vector.dat");
+	file_out.open (file_name);
 
 	if(!file_out.is_open()){
 		return 1;

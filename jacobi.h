@@ -32,7 +32,8 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 			  cuint level, cuint max_level, double* F);
 
 // 3D full weight restriction
-void restriction( double* R, double* R_new, cuint I, cuint J, cuint K);
+void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
+				  cuint I_new, cuint J_new, cuint K_new );
 
 
 void coarse_map( double* R, double* R_new,

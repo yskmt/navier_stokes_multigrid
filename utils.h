@@ -14,6 +14,7 @@ using namespace std;
 typedef const unsigned int cuint;
 typedef unsigned int uint;
 typedef const double cdouble;
+typedef const int cint;
 
 void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
@@ -31,7 +32,7 @@ void one_d_to_three_d( const unsigned int t,
 
 void get_neighbor( unsigned int t[][3][3],
 				   cuint i, cuint j, cuint k,
-					   cuint I, cuint J, cuint K );
+				   cuint I, cuint J, cuint K );
 
 
 

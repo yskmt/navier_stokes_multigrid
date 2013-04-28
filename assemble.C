@@ -81,23 +81,24 @@ void load_vector( double* F,
 
 }
 
-
- int boundary_conditins( const unsigned int n_dof,
+// set dirichlet boudnary condition
+// for periodic domain, it is sufficient to set only one point
+int boundary_conditins( const unsigned int n_dof,
 		const unsigned int I,
 		const unsigned int J,
 		const unsigned int K,
 		double** M,
 		double* F
 		)
-{
+ {
 	int n_bd=0;
 	// boundary conditions
 	uint t;
 	three_d_to_one_d(0,0,0, I,J, t);		
 	for(int n=0; n<n_dof; n++){
 	    M[n][t]=0;
-	    M[t][n]=0;
-    }
+		M[t][n]=0;
+	}
 	M[t][t] = 1;
 	F[t] = 1;
 	

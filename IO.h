@@ -10,11 +10,13 @@ using namespace std;
 // write out the sparse matrix
 int write_matrix(cuint P,
 				 cuint Q,
-				 double** U);
+				 double** U,
+				 char* file_name);
 
 // write out the sparse matrix
 int write_vector( cuint P,
-				  double* F);
+				  double* F,
+				  char* file_name);
 
 // write out the results
 int write_results( double* u,

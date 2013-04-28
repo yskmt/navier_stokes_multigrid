@@ -1,5 +1,5 @@
-clear all
-close all
+% clear all
+% close all
 
 P=load('points.dat');
 PD=load('point_data.dat');
