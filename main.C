@@ -6,9 +6,9 @@
 int main()
 {
 	// number of nodes in each dimension
-	cuint I=7; // 2^n-1
-	cuint J=7;
-	cuint K=7;
+	cuint I=15; // 2^n-1
+	cuint J=15;
+	cuint K=15;
 	cuint n_dof = I*J*K;
 	
 	// domain size
@@ -25,9 +25,9 @@ int main()
 	cdouble z_max = z_min+height;
 
 	// mesh size
-	cdouble dx = width/(I-1);
-	cdouble dy = length/(J-1);
-	cdouble dz = height/(K-1);
+	cdouble dx = width/(I);
+	cdouble dy = length/(J);
+	cdouble dz = height/(K);
 
 	// inverse of square of mesh sizes
 	cdouble dx2i = 1.0/(dx*dx);
@@ -37,7 +37,7 @@ int main()
 	// for jacobi method
 	cdouble tol = 0.01;
 	cuint max_iteration = 100000;
-	cuint max_level=0;
+	cuint max_level=2;
 
 	cdouble start=omp_get_wtime();
 	double* F;

@@ -62,6 +62,7 @@ void jacobi( cdouble tol, const int max_iteration,
 	return;
 }
 
+// multigrid v-cycle
 double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
 				 cdouble tol, cuint max_iteration,

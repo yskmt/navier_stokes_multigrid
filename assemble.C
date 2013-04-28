@@ -9,7 +9,7 @@ void fd_matrix( double** M,
 				const double dz2i
 				)
 {
-// #pragma omp parallel for shared(M)
+#pragma omp parallel for shared(M)
 	for(int i=0; i<I; i++){
 		for(int j=0; j<J; j++){
 			for(int k=0; k<K; k++){
@@ -73,9 +73,10 @@ void load_vector( double* F,
 	for(int n=0; n<n_dof; n++){
 		unsigned int i,j,k;
 		one_d_to_three_d( n, I, J, i, j, k);
-	    // F[n] = sin(i/(I)*2*pi)*sin(j/(J)*2*pi)*sin(k/(K)*2*pi);
-	    F[n] = sin(double(i)/double(I)*2*pi) * sin(double(j)/double(J)*2*pi)
-			* sin(double(k)/double(K)*2*pi);
+	    F[n] = sin(double(i)/double(I)*2*pi); // solution=(2pi)^2*sin(2pi*x);
+
+	    // F[n] = sin(double(i)/double(I)*2*pi) * sin(double(j)/double(J)*2*pi)
+			// * sin(double(k)/double(K)*2*pi);
     }
 
 }
@@ -94,9 +95,9 @@ void load_vector( double* F,
 	uint t;
 	three_d_to_one_d(0,0,0, I,J, t);		
 	for(int n=0; n<n_dof; n++){
-	M[n][t]=0;
-	M[t][n]=0;
-}
+	    M[n][t]=0;
+	    M[t][n]=0;
+    }
 	M[t][t] = 1;
 	F[t] = 1;
 	
