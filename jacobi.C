@@ -165,6 +165,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		cout<<"level: "<<level+1<<" n_dof: "<<n_dof_coar<<endl;
 
 		// initial guess
+#pragma omp parallel for shared(U_coar, U_coar_tmp)
 		for(int n=0; n<n_dof_coar; n++){
 			U_coar[n] = 0.0;
 			U_coar_tmp[n] = 0.0;
@@ -216,10 +217,10 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		cdouble dz_coar = height/(K_coar);
 
 	  
-		write_results( U_coar,
-					   n_dof_coar,
-					   I_coar, J_coar, K_coar,
-					   dx_coar, dy_coar, dz_coar, level);
+		// write_results( U_coar,
+		// 			   n_dof_coar,
+		// 			   I_coar, J_coar, K_coar,
+		// 			   dx_coar, dy_coar, dz_coar, level);
 		 
 	}
 
@@ -232,6 +233,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	interpolation(U_coar, E, I_coar,J_coar,K_coar, I, J, K);
 
 	// correct the fine grid approximation
+#pragma omp parallel for shared(U,E)
 	for(int i=0; i<n_dof; i++){
 		// cout<<i<<" "<<U[i]<<" "<<E[i]<<" "<<E[i]/U[i]<<endl;
 		U[i] += E[i];
@@ -270,6 +272,7 @@ void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
 				  cuint I_new, cuint J_new, cuint K_new )
 {	
 	unsigned int nei[3][3][3];
+#pragma omp parallel for shared(R, R_new) private(nei)
 	for(int i=0; i<I; i+=2){
 		for(int j=0; j<J; j+=2){
 			for(int k=0; k<K; k+=2){
@@ -285,7 +288,7 @@ void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
 
 // map from fine to coarse grid
 void coarse_map( double* R, double* R_new,
-				 uint nei[][3][3], cuint i, cuint j, cuint k, cuint t_new )
+				 cuint nei[][3][3], cuint i, cuint j, cuint k, cuint t_new )
 {
 	// initialize to 0 (otherwise nan can )
 	R_new[t_new] = 0.0;
@@ -307,6 +310,7 @@ void interpolation( double* U, double* U_fine,
 	uint box_old[2][2][2];
 	uint box_fine[2][2][2];
 
+#pragma omp parallel for shared(U, U_fine) private(box_old, box_fine)
 	for(int i=0; i<I; i++){
 		for(int j=0; j<J; j++){
 			for(int k=0; k<K; k++){

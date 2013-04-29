@@ -7,11 +7,11 @@ close all
 
 max_level=1;
 
-for i=0:max_level
-    U{i+1} = load(sprintf('results_%i.dat',i));
-    legend_names{i+1} = sprintf('level %i', i); 
+for i=1:max_level
+    U{i} = load(sprintf('results_%i.dat',i));
+    legend_names{i} = sprintf('level %i', i); 
 end
-U{max_level+2} = load('results_100.dat');
+U{max_level+1} = load('results_100.dat');
 legend_names{max_level+2} = 'final solution';
 legend_names{max_level+3} = 'exact solution';
 

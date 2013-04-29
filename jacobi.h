@@ -48,7 +48,7 @@ void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
 
 // map from fine to coarse solution
 void coarse_map( double* R, double* R_new,
-				 unsigned int nei[][3][3],
+				 cuint nei[][3][3],
 				 cuint i, cuint j, cuint k, cuint t_new );
 
 // 3D trilinear interpolation
