@@ -7,9 +7,10 @@ int main()
 {
 	// number of nodes in each dimension
 	// minimum size =3*3*3, should be 2^n+1: n=max_level-1
-	cuint I=11;
-	cuint J=11;
-	cuint K=11;
+	// should be 2^n due to periodic domain
+	cuint I=32;
+	cuint J=32;
+	cuint K=32;
 	cuint n_dof = I*J*K;
 	
 	// domain size
@@ -37,9 +38,9 @@ int main()
 
 	// for jacobi method
 	cdouble tol = 0.01;
-	cuint max_iteration = 10000;
+	cuint max_iteration = 10;
 	cuint pre_smooth_iteration = 10;
-	cuint max_level=0;
+	cuint max_level=3;
 
 	cdouble start=omp_get_wtime();
 	double* F;
@@ -56,7 +57,7 @@ int main()
 			
 	write_results( U,
 				   n_dof,
-				   I, J, K, dx, dy, dz, 0);
+				   I, J, K, dx, dy, dz, 100);
 	
 	delete[] U;
 	

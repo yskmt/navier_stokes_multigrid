@@ -13,9 +13,9 @@ double convergence_check ( double** M,
 	for(int i=0; i<n_dof; i++){
 		R[i] = 0.0;
 		for(int j=0; j<n_dof; j++){
-			R[i] += M[i][j]*U[j];
+			R[i] -= M[i][j]*U[j];
 		}
-		R[i] -= F[i];
+		R[i] += F[i];
 		E += R[i]*R[i];
 		
 	}
@@ -48,18 +48,20 @@ void jacobi( cdouble tol,
 				if(i!=j)
 					S += M[i][j]*u_old[j]; 
 			}
+			// if(M[i][i]==0) cout<<"zero "<<i<<endl;
 			// if(F[i] != F[i]) cout<<F[i]<<" "<<i<<endl;
 			u_new[i] = 1/M[i][i] * (F[i] - S);
 			// cout<<u_new[i]<<endl;
 		}
-		// check convrgence
-		// cout<<"conv check"<<endl;
-		// if(!(ct%10))
 
 		Er = convergence_check(M, u_new, F, R, n_dof);
-		cout<<"Er: "<<Er<<endl;
+		// cout<<"Er: "<<Er<<endl;
 		ct++;
 	}
+
+	if(max_iteration==0) 		
+		Er = convergence_check(M, u_new, F, R, n_dof);
+	
 	
 	return;
 }
@@ -72,6 +74,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cuint level, cuint max_level,
 				 double* F )
 {
+	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 	// for global constraint
 	n_dof = n_dof+1;
 	// initialize finite difference matrix (+1 for global constraint)
@@ -85,7 +88,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			M[i][j] = 0;
 	
 	// create finite difference matrix
-	cout<<"cireate finite difference matrix"<<endl;
+	cout<<"create finite difference matrix"<<endl;
 	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
 
 	// construct load vector
@@ -100,14 +103,14 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
 	// cout<<"number of boundary nodes = "<<n_bd<<endl;
 
-	cout<<"save matrix and vector"<<endl;
-	char matrix_file[100];
-	char vector_file[100];
-	sprintf(matrix_file, "matrix_%i.dat", level);
-	sprintf(vector_file, "vector_%i.dat", level);
-	if(write_matrix(n_dof,n_dof,M,matrix_file))
-		cout<<"write_matrix fail"<<endl;
-	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
+	// cout<<"save matrix and vector"<<endl;
+	// char matrix_file[100];
+	// char vector_file[100];
+	// sprintf(matrix_file, "matrix_%i.dat", level);
+	// sprintf(vector_file, "vector_%i.dat", level);
+	// if(write_matrix(n_dof,n_dof,M,matrix_file))
+	// 	cout<<"write_matrix fail"<<endl;
+	// if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
 	double* U = new double[n_dof];
@@ -125,15 +128,16 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// perform pre-smoothing and compute residual
 	cout<<"pre-smoothing "<<pre_smooth_iteration<<" times"<<endl;
 	jacobi(tol, pre_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
-
+		
 	// restriction of residual on coarse grid
 	double* F_coar;
 		
 	// Restrict the residual
-	cuint I_coar = (I+1)/2;
-	cuint J_coar = (J+1)/2;
-	cuint K_coar = (K+1)/2;
-	cuint n_dof_coar = I_coar*J_coar*K_coar+1; // +1 for global constraint
+	cuint I_coar = (I)/2;
+	cuint J_coar = (J)/2;
+	cuint K_coar = (K)/2;
+	uint n_dof_coar = I_coar*J_coar*K_coar; // +1 for global constraint
+	n_dof_coar +=1;
 	F_coar = new double[n_dof_coar];
 
 	// mesh size (-1) ignored because of periodic domain
@@ -149,7 +153,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// restric residual to the coarrse grid
 	cout<<"restriction"<<endl;
 	restriction( R, F_coar, I, J, K, I_coar, J_coar, K_coar);
-	F_coar[n_dof_coar-1] = 0; // global constraint
+	F_coar[n_dof_coar-1] = -R[n_dof-1]/n_dof*n_dof_coar; // global constraint
 	
 	// construct solution vector on coarse grid
 	double* U_coar = new double[n_dof_coar];
@@ -173,7 +177,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			for(int j=0; j<n_dof_coar; j++)
 				M_coar[i][j] = 0;
 		// create finite difference matrix
-		cout<<"cireate finite difference matrix"<<endl;
+		cout<<"create finite difference matrix"<<endl;
 		fd_matrix(M_coar, I_coar,J_coar,K_coar,
 				  dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
 
@@ -182,7 +186,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		
 		// exact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof_coar<<endl;
-
+		Er = tol*10;
 		jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
 			   M_coar, F_coar, Er, R_coar);
 
@@ -194,16 +198,22 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		 
 	}
 	else{
-		// inexact Jacobi method
-		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
-		jacobi(tol, 5, n_dof, U, U_tmp, M, F, Er, R);
-		
 		// v_cycle on the coarse grid
-		v_cycle( n_dof_coar, I_coar, J_coar, K_coar,
-				 dx2i_coar, dy2i_coar, dz2i_coar,
-				 tol, max_iteration, pre_smooth_iteration,
-				 width, length, height, level+1, max_level, F_coar );
+		U_coar = v_cycle( n_dof_coar-1, I_coar, J_coar, K_coar,
+						  dx2i_coar, dy2i_coar, dz2i_coar,
+						  tol, max_iteration, pre_smooth_iteration,
+						  width, length, height, level+1, max_level, F_coar );
+		
+		cdouble dx_coar = width/(I_coar);
+		cdouble dy_coar = length/(J_coar);
+		cdouble dz_coar = height/(K_coar);
+			
+		write_results( U_coar,
+					   n_dof_coar,
+					   I_coar, J_coar, K_coar,
+					   dx_coar, dy_coar, dz_coar, level+1);
 
+		
 	}
 
 	// fine grid (-1 ignored due to periodic domain)
@@ -216,10 +226,22 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	// correct the fine grid approximation
 	for(int i=0; i<n_dof; i++){
+		// cout<<i<<" "<<U[i]<<" "<<E[i]<<" "<<E[i]/U[i]<<endl;
 		U[i] += E[i];
 	}
-		
-	
+
+	// perform post-smoothing and compute residual
+	uint post_smooth_iteration;
+	if(level==0)
+		post_smooth_iteration=max_iteration;
+	else
+		post_smooth_iteration=pre_smooth_iteration;
+
+	cout<<"post-smoothing "<<post_smooth_iteration<<" times on level "
+		<<level<<endl;
+	Er = tol*10;
+	jacobi(tol, post_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
+
 	// cleanup
 	for(int n = 0; n< n_dof; n++) {
 		delete[] M[n];
@@ -232,6 +254,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	delete[] U_tmp;
 	delete[] R, F_coar;
 	delete[] E;
+	delete[] U_coar, U_coar_tmp;
 	
 	return U;
 }
@@ -291,6 +314,11 @@ void interpolation( double* U, double* U_fine,
 			}
 		}
 	}
+
+	// global constraints
+	U_fine[I_fine*J_fine*K_fine] =
+		U[I*J*K]/(I*J*K)*I_fine*J_fine*K_fine; // global constraint
+
 	
 	return;
 }

@@ -3,21 +3,26 @@ close all
 
 % M=load('matrix_0.dat');
 % F=load('vector_0.dat');
-U0 = load('results_0.dat');
-% U1 = load('results_10.dat');
-% spy(matrix);
-
-% [n,m]=size(M);
-
-
-
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
-plot(U0(:,1),U0(:,4), '-ro');
-% hold on
-% plot(U1(:,1),U1(:,4), '-bo');
+
+max_level=2;
+
+for i=0:max_level
+    U{i+1} = load(sprintf('results_%i.dat',i));
+    legend_names{i+1} = sprintf('level %i', i); 
+end
+U{max_level+2} = load('results_100.dat');
+legend_names{max_level+2} = 'final solution';
+
 hold on
-plot(0:0.01:1, -sin((0:0.01:1) * 2*pi)/(2*pi)^2, '-c') 
+col=hsv(max_level+2);
+for i=0:max_level+1
+   h= plot( U{i+1}(1:end,1),U{i+1}(1:end,4), '-o');
+   set(h, 'Color',col(i+1,:));
+end
 hold off
+legend(legend_names,0);
+
 
 
 % v=zeros(9,9,9);
