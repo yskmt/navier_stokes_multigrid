@@ -55,12 +55,15 @@ int write_results( double* u,
 				   cuint K,
 				   cdouble dx,
 				   cdouble dy,
-				   cdouble dz
+				   cdouble dz,
+				   cuint level
 				   )
 {
+	char file_name[100];
 	// write out the results in vtk format
 	ofstream file_out;
-	file_out.open ("results.vtk");
+	sprintf(file_name, "results_%i.vtk", level);
+	file_out.open (file_name);
 	if(!file_out.is_open()){
 		return 1;
 	}
@@ -90,7 +93,8 @@ int write_results( double* u,
 
 	// output files for matlab
 	// point coordinates and scalar result
-	file_out.open("results.dat");
+	sprintf(file_name, "results_%i.dat", level);
+	file_out.open(file_name);
 	for(int n=0; n<n_dof; n++){
 		one_d_to_three_d( n, I, J, i, j, k);
 		file_out<<i*dx<<" "<<j*dy<<" "<<k*dz<<" "<<u[n]<<endl;

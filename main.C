@@ -7,9 +7,9 @@ int main()
 {
 	// number of nodes in each dimension
 	// minimum size =3*3*3, should be 2^n+1: n=max_level-1
-	cuint I=17;
-	cuint J=17;
-	cuint K=17;
+	cuint I=11;
+	cuint J=11;
+	cuint K=11;
 	cuint n_dof = I*J*K;
 	
 	// domain size
@@ -38,7 +38,7 @@ int main()
 	// for jacobi method
 	cdouble tol = 0.01;
 	cuint max_iteration = 10000;
-	cuint max_level=3;
+	cuint max_level=0;
 
 	cdouble start=omp_get_wtime();
 	double* F;
@@ -52,10 +52,10 @@ int main()
 	
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
-
+			
 	write_results( u,
 				   n_dof,
-				   I, J, K, dx, dy, dz);
+				   I, J, K, dx, dy, dz,0);
 	
 	delete[] u;
 	

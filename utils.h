@@ -34,6 +34,10 @@ void get_neighbor( unsigned int t[][3][3],
 				   cuint i, cuint j, cuint k,
 				   cuint I, cuint J, cuint K );
 
+// get node numbers in a box
+void get_box( uint t[][2][2],
+				   cuint i, cuint j, cuint k,
+			  cuint I, cuint J, cuint K );
 
 
 #endif //UTILS_H

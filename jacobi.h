@@ -10,6 +10,16 @@
 
 using namespace std;
 
+// 3d full weighting stencil
+// [[1 2 1; 2 4 2; 1 2 1] [2 4 2; 4 8 4; 2 4 2]; [1 2 1; 2 4 2; 1 2 1]];
+cdouble fw_stencil[3][3][3] =
+	{ {{1.0/64.0,2.0/64.0,1.0/64.0}, {2.0/64.0,4.0/64.0,2.0/64.0},
+	   {1.0/64.0,2.0/64.0,1.0/64.0}},
+		{{2.0/64.0,4.0/64.0,2.0/64.0}, {4.0/64.0,8.0/64.0,4.0/64.0},
+		 {2.0/64.0,4.0/64.0,2.0/64.0}},
+			{{1.0/64.0,2.0/64.0,1.0/64.0}, {2.0/64.0,4.0/64.0,2.0/64.0},
+			 {1.0/64.0,2.0/64.0,1.0/64.0}}};
+
 void jacobi( cdouble tol, const int max_iteration,
 			 cuint n_dof,
 			 double* u_new,
@@ -35,10 +45,18 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
 				  cuint I_new, cuint J_new, cuint K_new );
 
-
+// map from fine to coarse solution
 void coarse_map( double* R, double* R_new,
 				 unsigned int nei[][3][3],
 				 cuint i, cuint j, cuint k, cuint t_new );
 
+// 3D trilinear interpolation
+void interpolation( double* U, double* U_fine,
+					cuint I, cuint J, cuint K,
+					cuint I_fine, cuint J_fine, cuint K_fine);
 
+// map from coarse to fine solution
+void fine_map( double* U, double* U_new,
+			   uint box_old[][2][2],
+			   uint box_new[][2][2] );
 #endif //JACOBI_H

@@ -26,7 +26,8 @@ int write_results( double* u,
 				   cuint K,
 				   cdouble dx,
 				   cdouble dy,
-				   cdouble dz
+				   cdouble dz,
+				   cuint level
 				   );
 
 

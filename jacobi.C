@@ -30,13 +30,13 @@ void jacobi( cdouble tol, const int max_iteration,
 			 double* u_old,
 			 double** M,
 			 double* F,
-			 double& E,
+			 double& Er,
 			 double* R)
 {
 	// iteration counter
 	int ct = 0;
 
-	while(E>tol && ct<max_iteration){
+	while(Er>tol && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
 		
@@ -55,8 +55,8 @@ void jacobi( cdouble tol, const int max_iteration,
 		// cout<<"conv check"<<endl;
 		// if(!(ct%10))
 
-		E = convergence_check(M, u_new, F, R, n_dof);
-		cout<<"E: "<<E<<endl;
+		Er = convergence_check(M, u_new, F, R, n_dof);
+		cout<<"Er: "<<Er<<endl;
 		ct++;
 	}
 	
@@ -91,7 +91,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// load vector is created only at the level 0
 	if(level==0){
 		F = new double[n_dof];
-		cout<<"crate load vector"<<endl;
+		cout<<"create load vector"<<endl;
 		load_vector(F, n_dof, I,J,K );
 	}
 
@@ -99,7 +99,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
 	// cout<<"number of boundary nodes = "<<n_bd<<endl;
 
-	// save matrix and vector
+	cout<<"save matrix and vector"<<endl;
 	char matrix_file[100];
 	char vector_file[100];
 	sprintf(matrix_file, "matrix_%i.dat", level);
@@ -109,24 +109,24 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
-	double* u_new = new double[n_dof];
+	double* U = new double[n_dof];
 	double* u_old = new double[n_dof];
 	// initial guess
 	for(int n=0; n<n_dof; n++){
-	    u_new[n] = 0.0;
+	    U[n] = 0.0;
 	    u_old[n] = 0.0;
     }
 
 	// residual and error
 	double* R = new double[n_dof];
-	double E=100000000;
-	double* R_new;
+	double Er=tol*100;
+	double* R_coa;
 
 	if( level==max_level){
 		// exact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
 
-		jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
+		jacobi(tol, max_iteration, n_dof, U, u_old, M, F, Er, R);
 
 		// cout<<"R"<<endl;
 		// for(int i=0; i<n_dof; i++)
@@ -136,38 +136,47 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	else{
 		// inexact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
-		jacobi(tol, 5, n_dof, u_new, u_old, M, F, E, R);
+		jacobi(tol, 5, n_dof, U, u_old, M, F, Er, R);
 		
 		// Restrict the residual
-		cuint I_new = (I+1)/2;
-		cuint J_new = (J+1)/2;
-		cuint K_new = (K+1)/2;
-		cuint n_dof_new = I_new*J_new*K_new;
-		R_new = new double[n_dof_new];
+		cuint I_coa = (I+1)/2;
+		cuint J_coa = (J+1)/2;
+		cuint K_coa = (K+1)/2;
+		cuint n_dof_coa = I_coa*J_coa*K_coa;
+		R_coa = new double[n_dof_coa];
 
-		// mesh size
-		cdouble dx_new = width/(I_new-1);
-		cdouble dy_new = length/(J_new-1);
-		cdouble dz_new = height/(K_new-1);
+		// mesh size (-1) ignored because of periodic domain
+		cdouble dx_coa = width/(I_coa);
+		cdouble dy_coa = length/(J_coa);
+		cdouble dz_coa = height/(K_coa);
 	
 		// inverse of square of mesh sizes
-		cdouble dx2i_new = 1.0/(dx_new*dx_new);
-		cdouble dy2i_new = 1.0/(dy_new*dy_new);
-		cdouble dz2i_new = 1.0/(dz_new*dz_new);
+		cdouble dx2i_coa = 1.0/(dx_coa*dx_coa);
+		cdouble dy2i_coa = 1.0/(dy_coa*dy_coa);
+		cdouble dz2i_coa = 1.0/(dz_coa*dz_coa);
 
 		// for(int i=0; i<n_dof; i++)
 		// 	if(R[i]!=R[i]) cout<<i<<" is nan"<<endl;
 		
 		// restric residual to the coarse grid
-		restriction( R, R_new, I, J, K, I_new, J_new, K_new);
-
+		cout<<"restriction"<<endl;
+		restriction( R, R_coa, I, J, K, I_coa, J_coa, K_coa);
+		cout<<"done"<<endl;	
+		
 		// v_cycle on the coarse grid
-		v_cycle( n_dof_new, I_new, J_new, K_new,
-				 dx2i_new, dy2i_new, dz2i_new,
+		v_cycle( n_dof_coa, I_coa, J_coa, K_coa,
+				 dx2i_coa, dy2i_coa, dz2i_coa,
 				 tol, max_iteration,
-				 width, length, height, level+1, max_level, R_new );
+				 width, length, height, level+1, max_level, R_coa );
 
 	}
+
+	cuint I_fine = I*2-1;
+	cuint J_fine = J*2-1;
+	cuint K_fine = K*2-1;
+	cuint n_dof_fine = I_fine*J_fine*K_fine+1;
+	double* E = new double[n_dof_fine];
+	interpolation(U, E, I,J,K, I_fine, J_fine, K_fine);
 	
 	// cleanup
 	for(int n = 0; n< n_dof; n++) {
@@ -179,9 +188,9 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		delete[] F;
 
 	delete[] u_old;
-	delete[] R, R_new;
+	delete[] R, R_coa;
 	
-	return u_new;
+	return U;
 }
 
 // 3D full weight restriction
@@ -217,14 +226,63 @@ void coarse_map( double* R, double* R_new,
 	}
 }
 
-//
-void interpolation()
+// 3d trilinear interpolation
+void interpolation( double* U, double* U_fine,
+					cuint I, cuint J, cuint K,
+					cuint I_fine, cuint J_fine, cuint K_fine)
 {
-	cuint I_new = I*2-1;
-	cuint J_new = J*2-1;
-	cuint K_new = K*2-1;
 
+	uint box_old[2][2][2];
+	uint box_fine[2][2][2];
 
+	for(int i=0; i<I; i++){
+		for(int j=0; j<J; j++){
+			for(int k=0; k<K; k++){
+				// get the node nubmers of the old (coarse) box
+				get_box(box_old, i,j,k, I, J, K);
+				// get the node nubmbers of new (fine) box
+				get_box(box_fine, i*2,j*2,k*2, I_fine, J_fine, K_fine);
+
+				// map from coarse to fine grid
+				fine_map(U, U_fine, box_old, box_fine);
+			}
+		}
+	}
 	
 	return;
+}
+
+void fine_map( double* U, double* U_new,
+			   uint box_old[][2][2],
+			   uint box_new[][2][2] )
+{
+	U_new[box_new[0][0][0]] = U[box_old[0][0][0]];
+	U_new[box_new[1][0][0]] = (U[box_old[0][0][0]]
+							   + U[box_old[1][0][0]])/2;
+	U_new[box_new[0][1][0]] = (U[box_old[0][0][0]]
+							   + U[box_old[0][1][0]])/2;
+	U_new[box_new[0][0][1]] = (U[box_old[0][0][0]]
+							   + U[box_old[0][0][1]])/2;
+	U_new[box_new[1][1][0]] = (U[box_old[0][0][0]]
+							   + U[box_old[1][0][0]]
+							   + U[box_old[0][1][0]]
+							   + U[box_old[1][1][0]])/4;
+	U_new[box_new[1][0][1]] = (U[box_old[0][0][0]]
+							   + U[box_old[1][0][0]]
+							   + U[box_old[0][0][1]]
+							   + U[box_old[1][0][1]])/4;
+	U_new[box_new[0][1][1]] = (U[box_old[0][0][0]]
+							   + U[box_old[0][1][0]]
+							   + U[box_old[0][0][1]]
+							   + U[box_old[0][1][1]])/4;
+	U_new[box_new[1][1][1]] = ( U[box_old[0][0][0]]
+								+ U[box_old[1][0][0]]
+								+ U[box_old[0][1][0]]
+								+ U[box_old[0][0][1]]
+								+ U[box_old[0][1][1]]
+								+ U[box_old[1][0][1]]
+								+ U[box_old[1][1][0]]
+								+ U[box_old[1][1][1]]
+								)/8;
+
 }
