@@ -24,8 +24,9 @@ double convergence_check ( double** M,
 }
 
 // jacobi method
-void jacobi( cdouble tol, const int max_iteration,
-			 const unsigned int n_dof,
+void jacobi( cdouble tol,
+			 cuint max_iteration,
+			 cuint n_dof,
 			 double* u_new,
 			 double* u_old,
 			 double** M,
@@ -66,7 +67,7 @@ void jacobi( cdouble tol, const int max_iteration,
 // multigrid v-cycle
 double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
-				 cdouble tol, cuint max_iteration,
+				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
 				 double* F )
@@ -110,73 +111,114 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	
 	// construct solution vector
 	double* U = new double[n_dof];
-	double* u_old = new double[n_dof];
+	double* U_tmp = new double[n_dof];
 	// initial guess
 	for(int n=0; n<n_dof; n++){
 	    U[n] = 0.0;
-	    u_old[n] = 0.0;
+	    U_tmp[n] = 0.0;
     }
 
 	// residual and error
 	double* R = new double[n_dof];
 	double Er=tol*100;
-	double* R_coa;
 
+	// perform pre-smoothing and compute residual
+	cout<<"pre-smoothing "<<pre_smooth_iteration<<" times"<<endl;
+	jacobi(tol, pre_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
+
+	// restriction of residual on coarse grid
+	double* F_coar;
+		
+	// Restrict the residual
+	cuint I_coar = (I+1)/2;
+	cuint J_coar = (J+1)/2;
+	cuint K_coar = (K+1)/2;
+	cuint n_dof_coar = I_coar*J_coar*K_coar+1; // +1 for global constraint
+	F_coar = new double[n_dof_coar];
+
+	// mesh size (-1) ignored because of periodic domain
+	cdouble dx_coar = width/(I_coar);
+	cdouble dy_coar = length/(J_coar);
+	cdouble dz_coar = height/(K_coar);
+	
+	// inverse of square of mesh sizes
+	cdouble dx2i_coar = 1.0/(dx_coar*dx_coar);
+	cdouble dy2i_coar = 1.0/(dy_coar*dy_coar);
+	cdouble dz2i_coar = 1.0/(dz_coar*dz_coar);
+		
+	// restric residual to the coarrse grid
+	cout<<"restriction"<<endl;
+	restriction( R, F_coar, I, J, K, I_coar, J_coar, K_coar);
+	F_coar[n_dof_coar-1] = 0; // global constraint
+	
+	// construct solution vector on coarse grid
+	double* U_coar = new double[n_dof_coar];
+	double* U_coar_tmp = new double[n_dof_coar];
+	
+	// if the grid is coarsest
 	if( level==max_level){
+		// initial guess
+		for(int n=0; n<n_dof_coar; n++){
+			U_coar[n] = 0.0;
+			U_coar_tmp[n] = 0.0;
+		}
+
+		// initialize finite difference matrix (+1 for global constraint)
+		double** M_coar = new double*[n_dof_coar];
+		for(int n = 0; n < (n_dof_coar); n++)
+			M_coar[n] = new double[n_dof_coar];
+		// initialize 
+#pragma omp parallel for shared(M_coar)
+		for(int i=0; i<n_dof_coar; i++)
+			for(int j=0; j<n_dof_coar; j++)
+				M_coar[i][j] = 0;
+		// create finite difference matrix
+		cout<<"cireate finite difference matrix"<<endl;
+		fd_matrix(M_coar, I_coar,J_coar,K_coar,
+				  dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
+
+		// residual on coarse grid
+		double* R_coar = new double[n_dof_coar];
+		
 		// exact Jacobi method
-		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
+		cout<<"level: "<<level<<" n_dof "<<n_dof_coar<<endl;
 
-		jacobi(tol, max_iteration, n_dof, U, u_old, M, F, Er, R);
+		jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
+			   M_coar, F_coar, Er, R_coar);
 
+		delete[] R_coar;
+		
 		// cout<<"R"<<endl;
 		// for(int i=0; i<n_dof; i++)
 		// 	cout<<R[i]<<endl;
-		
+		 
 	}
 	else{
 		// inexact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
-		jacobi(tol, 5, n_dof, U, u_old, M, F, Er, R);
-		
-		// Restrict the residual
-		cuint I_coa = (I+1)/2;
-		cuint J_coa = (J+1)/2;
-		cuint K_coa = (K+1)/2;
-		cuint n_dof_coa = I_coa*J_coa*K_coa;
-		R_coa = new double[n_dof_coa];
-
-		// mesh size (-1) ignored because of periodic domain
-		cdouble dx_coa = width/(I_coa);
-		cdouble dy_coa = length/(J_coa);
-		cdouble dz_coa = height/(K_coa);
-	
-		// inverse of square of mesh sizes
-		cdouble dx2i_coa = 1.0/(dx_coa*dx_coa);
-		cdouble dy2i_coa = 1.0/(dy_coa*dy_coa);
-		cdouble dz2i_coa = 1.0/(dz_coa*dz_coa);
-
-		// for(int i=0; i<n_dof; i++)
-		// 	if(R[i]!=R[i]) cout<<i<<" is nan"<<endl;
-		
-		// restric residual to the coarse grid
-		cout<<"restriction"<<endl;
-		restriction( R, R_coa, I, J, K, I_coa, J_coa, K_coa);
-		cout<<"done"<<endl;	
+		jacobi(tol, 5, n_dof, U, U_tmp, M, F, Er, R);
 		
 		// v_cycle on the coarse grid
-		v_cycle( n_dof_coa, I_coa, J_coa, K_coa,
-				 dx2i_coa, dy2i_coa, dz2i_coa,
-				 tol, max_iteration,
-				 width, length, height, level+1, max_level, R_coa );
+		v_cycle( n_dof_coar, I_coar, J_coar, K_coar,
+				 dx2i_coar, dy2i_coar, dz2i_coar,
+				 tol, max_iteration, pre_smooth_iteration,
+				 width, length, height, level+1, max_level, F_coar );
 
 	}
 
-	cuint I_fine = I*2-1;
-	cuint J_fine = J*2-1;
-	cuint K_fine = K*2-1;
-	cuint n_dof_fine = I_fine*J_fine*K_fine+1;
-	double* E = new double[n_dof_fine];
-	interpolation(U, E, I,J,K, I_fine, J_fine, K_fine);
+	// fine grid (-1 ignored due to periodic domain)
+	// cuint I_fine = I*2;
+	// cuint J_fine = J*2;
+	// cuint K_fine = K*2;
+	// cuint n_dof_fine = I_fine*J_fine*K_fine+1;
+	double* E = new double[n_dof];
+	interpolation(U_coar, E, I_coar,J_coar,K_coar, I, J, K);
+
+	// correct the fine grid approximation
+	for(int i=0; i<n_dof; i++){
+		U[i] += E[i];
+	}
+		
 	
 	// cleanup
 	for(int n = 0; n< n_dof; n++) {
@@ -187,8 +229,9 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	if (level==0)
 		delete[] F;
 
-	delete[] u_old;
-	delete[] R, R_coa;
+	delete[] U_tmp;
+	delete[] R, F_coar;
+	delete[] E;
 	
 	return U;
 }

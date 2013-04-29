@@ -38,14 +38,15 @@ int main()
 	// for jacobi method
 	cdouble tol = 0.01;
 	cuint max_iteration = 10000;
+	cuint pre_smooth_iteration = 10;
 	cuint max_level=0;
 
 	cdouble start=omp_get_wtime();
 	double* F;
-	double* u = v_cycle( n_dof, I, J, K,
-			 dx2i, dy2i,  dz2i,
-			 tol, max_iteration,
-			 width, length, height, 0, max_level, F );
+	double* U = v_cycle( n_dof, I, J, K,
+						 dx2i, dy2i,  dz2i,
+						 tol, max_iteration, pre_smooth_iteration,
+						 width, length, height, 0, max_level, F );
 	cdouble end=omp_get_wtime();
 
 	cout<<"wall clock time = "<<end-start<<endl;
@@ -53,11 +54,11 @@ int main()
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
 			
-	write_results( u,
+	write_results( U,
 				   n_dof,
-				   I, J, K, dx, dy, dz,0);
+				   I, J, K, dx, dy, dz, 0);
 	
-	delete[] u;
+	delete[] U;
 	
 	return 0;
 }

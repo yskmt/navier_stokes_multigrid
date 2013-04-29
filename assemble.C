@@ -61,7 +61,7 @@ void fd_matrix( double** M,
 		}
 	}
 
-	cout<<"setting global constraint"<<endl;
+	// cout<<"setting global constraint"<<endl;
 	// global constraint
 	for(int i=0; i<(n_dof); i++){
 		M[i][n_dof-1] = 1;
@@ -87,7 +87,7 @@ void load_vector( double* F,
 
 	    // F[n] = sin(double(i)/double(I)*2*pi) * sin(double(j)/double(J)*2*pi)
 			// * sin(double(k)/double(K)*2*pi);
-    }
+     }
 
 	// global constraint
 	F[n_dof-1] = 0;

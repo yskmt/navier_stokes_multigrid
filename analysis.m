@@ -4,7 +4,7 @@ close all
 % M=load('matrix_0.dat');
 % F=load('vector_0.dat');
 U0 = load('results_0.dat');
-U1 = load('results_1.dat');
+% U1 = load('results_10.dat');
 % spy(matrix);
 
 % [n,m]=size(M);
@@ -13,10 +13,10 @@ U1 = load('results_1.dat');
 
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
 plot(U0(:,1),U0(:,4), '-ro');
+% hold on
+% plot(U1(:,1),U1(:,4), '-bo');
 hold on
-plot(U1(:,1),U1(:,4), '-o');
-hold on
-plot(0:0.01:1, -sin((0:0.01:1) * 2*pi)/(2*pi)^2, '-r') 
+plot(0:0.01:1, -sin((0:0.01:1) * 2*pi)/(2*pi)^2, '-c') 
 hold off
 
 

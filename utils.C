@@ -66,10 +66,10 @@ void get_box( uint t[][2][2],
 				int nei_i, nei_j, nei_k;
 				if(i+p>=I) nei_i = i+p-I;
 				else nei_i = i+p;
-				if(j+p>=J) nei_j = j+p-J;
-				else nei_j = j+p;
-				if(k+p>=K) nei_k = k+p-K;
-				else nei_k = k+p;
+				if(j+q>=J) nei_j = j+q-J;
+				else nei_j = j+q;
+				if(k+r>=K) nei_k = k+r-K;
+				else nei_k = k+r;
 				
 				three_d_to_one_d(nei_i,nei_j,nei_k, I,J, t[p][q][r]);
 			}

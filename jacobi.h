@@ -20,7 +20,8 @@ cdouble fw_stencil[3][3][3] =
 			{{1.0/64.0,2.0/64.0,1.0/64.0}, {2.0/64.0,4.0/64.0,2.0/64.0},
 			 {1.0/64.0,2.0/64.0,1.0/64.0}}};
 
-void jacobi( cdouble tol, const int max_iteration,
+void jacobi( cdouble tol,
+			 cuint max_iteration,
 			 cuint n_dof,
 			 double* u_new,
 			 double* u_old,
@@ -37,7 +38,7 @@ double convergence_check ( double** M,
 
 double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
-			  cdouble tol, cuint max_iteration,
+			  cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
 			  cdouble width, cdouble length, cdouble height,
 			  cuint level, cuint max_level, double* F);
 
