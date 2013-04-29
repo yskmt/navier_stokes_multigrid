@@ -5,7 +5,7 @@ close all
 % F=load('vector_0.dat');
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
 
-max_level=2;
+max_level=1;
 
 for i=0:max_level
     U{i+1} = load(sprintf('results_%i.dat',i));
@@ -13,17 +13,21 @@ for i=0:max_level
 end
 U{max_level+2} = load('results_100.dat');
 legend_names{max_level+2} = 'final solution';
+legend_names{max_level+3} = 'exact solution';
 
 hold on
-col=hsv(max_level+2);
+col=hsv(max_level+3);
 for i=0:max_level+1
    h= plot( U{i+1}(1:end,1),U{i+1}(1:end,4), '-o');
    set(h, 'Color',col(i+1,:));
 end
-hold off
+
+x=0:0.01:1;
+plot(x, -(1/(2*pi))^2*sin(x*2*pi));
+
 legend(legend_names,0);
 
-
+hold off
 
 % v=zeros(9,9,9);
 

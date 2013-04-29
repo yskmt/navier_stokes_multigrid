@@ -72,7 +72,8 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
-				 double* F )
+				 double* F,
+				 double& Er)
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 	// for global constraint
@@ -116,6 +117,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	double* U = new double[n_dof];
 	double* U_tmp = new double[n_dof];
 	// initial guess
+#pragma omp parallel for shared(U, U_tmp)
 	for(int n=0; n<n_dof; n++){
 	    U[n] = 0.0;
 	    U_tmp[n] = 0.0;
@@ -123,7 +125,6 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	// residual and error
 	double* R = new double[n_dof];
-	double Er=tol*100;
 
 	// perform pre-smoothing and compute residual
 	cout<<"pre-smoothing "<<pre_smooth_iteration<<" times"<<endl;
@@ -161,6 +162,8 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	
 	// if the grid is coarsest
 	if( level==max_level){
+		cout<<"level: "<<level+1<<" n_dof: "<<n_dof_coar<<endl;
+
 		// initial guess
 		for(int n=0; n<n_dof_coar; n++){
 			U_coar[n] = 0.0;
@@ -185,11 +188,15 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		double* R_coar = new double[n_dof_coar];
 		
 		// exact Jacobi method
-		cout<<"level: "<<level<<" n_dof "<<n_dof_coar<<endl;
-		Er = tol*10;
 		jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
 			   M_coar, F_coar, Er, R_coar);
 
+		// write_results( U_coar,
+		// 			   n_dof_coar,
+		// 			   I_coar, J_coar, K_coar,
+		// 			   dx_coar, dy_coar, dz_coar, level);
+
+		
 		delete[] R_coar;
 		
 		// cout<<"R"<<endl;
@@ -202,18 +209,18 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		U_coar = v_cycle( n_dof_coar-1, I_coar, J_coar, K_coar,
 						  dx2i_coar, dy2i_coar, dz2i_coar,
 						  tol, max_iteration, pre_smooth_iteration,
-						  width, length, height, level+1, max_level, F_coar );
+						  width, length, height, level+1, max_level, F_coar, Er );
 		
 		cdouble dx_coar = width/(I_coar);
 		cdouble dy_coar = length/(J_coar);
 		cdouble dz_coar = height/(K_coar);
-			
+
+	  
 		write_results( U_coar,
 					   n_dof_coar,
 					   I_coar, J_coar, K_coar,
-					   dx_coar, dy_coar, dz_coar, level+1);
-
-		
+					   dx_coar, dy_coar, dz_coar, level);
+		 
 	}
 
 	// fine grid (-1 ignored due to periodic domain)
@@ -239,7 +246,6 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	cout<<"post-smoothing "<<post_smooth_iteration<<" times on level "
 		<<level<<endl;
-	Er = tol*10;
 	jacobi(tol, post_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
 
 	// cleanup
@@ -356,4 +362,83 @@ void fine_map( double* U, double* U_new,
 								+ U[box_old[1][1][1]]
 								)/8;
 
+}
+
+
+// 0_level v-cycle for testing purpose
+double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
+				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
+				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+				 cdouble width, cdouble length, cdouble height,
+				 cuint level, cuint max_level,
+				 double* F,
+				 double& Er)
+{
+	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
+	// for global constraint
+	n_dof = n_dof+1;
+	// initialize finite difference matrix (+1 for global constraint)
+	double** M = new double*[n_dof];
+	for(int n = 0; n < (n_dof); n++)
+		M[n] = new double[n_dof];
+	// initialize 
+#pragma omp parallel for shared(n_dof, M)
+	for(int i=0; i<n_dof; i++)
+		for(int j=0; j<n_dof; j++)
+			M[i][j] = 0;
+	
+	// create finite difference matrix
+	cout<<"create finite difference matrix"<<endl;
+	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
+
+	// construct load vector
+	// load vector is created only at the level 0
+	if(level==0){
+		F = new double[n_dof];
+		cout<<"create load vector"<<endl;
+		load_vector(F, n_dof, I,J,K );
+	}
+
+	// set dirichlet boundary conditions
+	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
+	// cout<<"number of boundary nodes = "<<n_bd<<endl;
+
+	// cout<<"save matrix and vector"<<endl;
+	// char matrix_file[100];
+	// char vector_file[100];
+	// sprintf(matrix_file, "matrix_%i.dat", level);
+	// sprintf(vector_file, "vector_%i.dat", level);
+	// if(write_matrix(n_dof,n_dof,M,matrix_file))
+	// 	cout<<"write_matrix fail"<<endl;
+	// if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
+	
+	// construct solution vector
+	double* U = new double[n_dof];
+	double* U_tmp = new double[n_dof];
+	// initial guess
+	for(int n=0; n<n_dof; n++){
+	    U[n] = 0.0;
+	    U_tmp[n] = 0.0;
+    }
+
+	// residual and error
+	double* R = new double[n_dof];
+
+	// perform full jacobi iteration
+	cout<<"jacobi method "<<max_iteration<<" times"<<endl;
+	jacobi(tol, max_iteration, n_dof, U, U_tmp, M, F, Er, R);
+		
+	// cleanup
+	for(int n = 0; n< n_dof; n++) {
+		delete[] M[n];
+	}
+	delete[] M;
+
+	if (level==0)
+		delete[] F;
+
+	delete[] U_tmp;
+	delete[] R;
+	
+	return U;
 }
