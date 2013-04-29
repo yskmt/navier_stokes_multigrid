@@ -6,7 +6,8 @@ void fd_matrix( double** M,
 				cuint I, cuint J, cuint K,
 				const double dx2i,
 				const double dy2i,
-				const double dz2i
+				const double dz2i,
+				cuint n_dof
 				)
 {
 #pragma omp parallel for shared(M)
@@ -60,17 +61,26 @@ void fd_matrix( double** M,
 		}
 	}
 
+	cout<<"setting global constraint"<<endl;
+	// global constraint
+	for(int i=0; i<(n_dof); i++){
+		M[i][n_dof-1] = 1;
+		M[n_dof-1][i] = 1;
+	}
+	M[n_dof-1][n_dof-1] = n_dof;
+
 }
 
 void load_vector( double* F,
 				  cuint n_dof,
 				  cuint I,
 				  cuint J,
-				  cuint K)
+				  cuint K
+				  )
 {
 	// construct load vector
 	#pragma omp parallel for shared(F)
-	for(int n=0; n<n_dof; n++){
+	for(int n=0; n<n_dof-1; n++){
 		unsigned int i,j,k;
 		one_d_to_three_d( n, I, J, i, j, k);
 	    F[n] = sin(double(i)/double(I)*2*pi); // solution=(2pi)^2*sin(2pi*x);
@@ -78,6 +88,9 @@ void load_vector( double* F,
 	    // F[n] = sin(double(i)/double(I)*2*pi) * sin(double(j)/double(J)*2*pi)
 			// * sin(double(k)/double(K)*2*pi);
     }
+
+	// global constraint
+	F[n_dof-1] = 0;
 
 }
 

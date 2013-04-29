@@ -58,32 +58,12 @@ int write_results( double* u,
 				   cdouble dz
 				   )
 {
-	// double*** results;    // 3D results definition;
-	// // begin memory allocation
-	// results = new double**[I];
-	// for(int x = 0; x < I; ++x) {
-	// 	results[x] = new double*[J];
-	// 	for(int y = 0; y < J; ++y) {
-	// 		results[x][y] = new double[K];
-	// 		for(int z = 0; z < K; ++z) { // initialize the values to whatever you want the default to be
-	// 			results[x][y][z] = 0;
-	// 		}
-	// 	}
-	// }
-
-	// write out the results now
+	// write out the results in vtk format
 	ofstream file_out;
 	file_out.open ("results.vtk");
 	if(!file_out.is_open()){
 		return 1;
 	}
-	// file_out<<"x coord, y coord, z coord, scalar"<<endl;
-	// unsigned int i,j,k;
-	// for(int n=0; n<n_dof; n++){
-	// 	one_d_to_three_d( n, I, J, i, j, k);
-	// 	file_out<<j<<", "<<i<<", "<<k<<", "<<u[n]<<endl;
-	// }
-
 	
 	// header
 	file_out<<"# vtk DataFile Version 3.0"<<endl;
@@ -105,7 +85,16 @@ int write_results( double* u,
 	for(int n=0; n<n_dof; n++){
 		file_out<<u[n]<<endl;
 	}
-			
+	
 	file_out.close();
 
+	// output files for matlab
+	// point coordinates and scalar result
+	file_out.open("results.dat");
+	for(int n=0; n<n_dof; n++){
+		one_d_to_three_d( n, I, J, i, j, k);
+		file_out<<i*dx<<" "<<j*dy<<" "<<k*dz<<" "<<u[n]<<endl;
+	}
+	file_out.close();
+	
 }

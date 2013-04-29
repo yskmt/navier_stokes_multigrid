@@ -1,32 +1,22 @@
 clear all
 close all
 
-M=load('matrix_0.dat');
-F=load('vector_0.dat');
+M=load('matrix_3.dat');
+F=load('vector_3.dat');
+U = load('results.dat');
 
 % spy(matrix);
 
 [n,m]=size(M);
 
-P = zeros(n,1);
 
-M2 = M;
-F2 = F;
-M2(n+1,:) = 1;
-M2(:, m+1) = 1;
-M2(n+1,m+1) = 0;
-F2(n+1) = 0;
-U2=M2\F2;
-U1 = M\F;
-U1(n+1) = 0;
-
-% [P,dP,Z] = jacobi(M,F,P,0.00001,10000);
-
-spy(M);
-
-% U = load('results.dat');
-
+% 
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
+% plot(U(:,1),U(:,4), '-o');
+% hold on
+% plot(0:0.01:1, -sin((0:0.01:1) * 2*pi)/(2*pi)^2, '-r') 
+% hold off
+
 
 % v=zeros(9,9,9);
 

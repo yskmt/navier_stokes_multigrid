@@ -6,7 +6,7 @@ double convergence_check ( double** M,
 						   double* U,
 						   double* F,
 						   double* R,
-						   const int n_dof)
+						   cuint n_dof)
 {
 	double E=0;
 #pragma omp parallel for shared(R,M,U,F,E)
@@ -17,6 +17,7 @@ double convergence_check ( double** M,
 		}
 		R[i] -= F[i];
 		E += R[i]*R[i];
+		
 	}
 	
 	return E; 
@@ -38,7 +39,6 @@ void jacobi( cdouble tol, const int max_iteration,
 	while(E>tol && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
-		cout<<"E "<<E<<endl;
 		
 #pragma omp parallel for shared(M,F,u_old,u_new)
 		for(int i=0; i<n_dof; i++){
@@ -47,51 +47,56 @@ void jacobi( cdouble tol, const int max_iteration,
 				if(i!=j)
 					S += M[i][j]*u_old[j]; 
 			}
+			// if(F[i] != F[i]) cout<<F[i]<<" "<<i<<endl;
 			u_new[i] = 1/M[i][i] * (F[i] - S);
 			// cout<<u_new[i]<<endl;
 		}
-		// check convergence
+		// check convrgence
 		// cout<<"conv check"<<endl;
 		// if(!(ct%10))
 
 		E = convergence_check(M, u_new, F, R, n_dof);
+		cout<<"E: "<<E<<endl;
 		ct++;
 	}
-	cout<<"E "<<E<<endl;
 	
 	return;
 }
 
 // multigrid v-cycle
-double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
+double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
 				 cdouble tol, cuint max_iteration,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
 				 double* F )
-{			
-	// initialize finite difference matrix
+{
+	// for global constraint
+	n_dof = n_dof+1;
+	// initialize finite difference matrix (+1 for global constraint)
 	double** M = new double*[n_dof];
 	for(int n = 0; n < (n_dof); n++)
 		M[n] = new double[n_dof];
-
+	// initialize 
+#pragma omp parallel for shared(n_dof, M)
+	for(int i=0; i<n_dof; i++)
+		for(int j=0; j<n_dof; j++)
+			M[i][j] = 0;
+	
 	// create finite difference matrix
-	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i);
+	cout<<"cireate finite difference matrix"<<endl;
+	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
 
 	// construct load vector
-	// double* F;
 	// load vector is created only at the level 0
 	if(level==0){
 		F = new double[n_dof];
-		load_vector(F, n_dof, I,J,K);
+		cout<<"crate load vector"<<endl;
+		load_vector(F, n_dof, I,J,K );
 	}
-	// else the load vector is taken from residual
-	// else{
-	// 	F = R;
-	// }
+
 	// set dirichlet boundary conditions
-	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);
-	
+	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
 	// cout<<"number of boundary nodes = "<<n_bd<<endl;
 
 	// save matrix and vector
@@ -99,7 +104,8 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 	char vector_file[100];
 	sprintf(matrix_file, "matrix_%i.dat", level);
 	sprintf(vector_file, "vector_%i.dat", level);
-	if(write_matrix(n_dof,n_dof,M,matrix_file)) cout<<"write_matrix fail"<<endl;
+	if(write_matrix(n_dof,n_dof,M,matrix_file))
+		cout<<"write_matrix fail"<<endl;
 	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
@@ -122,7 +128,6 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 
 		jacobi(tol, max_iteration, n_dof, u_new, u_old, M, F, E, R);
 
-		// cout<<"E: "<<E<<endl;
 		// cout<<"R"<<endl;
 		// for(int i=0; i<n_dof; i++)
 		// 	cout<<R[i]<<endl;
@@ -132,7 +137,6 @@ double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
 		// inexact Jacobi method
 		cout<<"level: "<<level<<" n_dof "<<n_dof<<endl;
 		jacobi(tol, 5, n_dof, u_new, u_old, M, F, E, R);
-		// cout<<E<<endl;
 		
 		// Restrict the residual
 		cuint I_new = (I+1)/2;
@@ -216,7 +220,11 @@ void coarse_map( double* R, double* R_new,
 //
 void interpolation()
 {
-	
+	cuint I_new = I*2-1;
+	cuint J_new = J*2-1;
+	cuint K_new = K*2-1;
+
+
 	
 	return;
 }

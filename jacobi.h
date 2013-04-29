@@ -11,7 +11,7 @@
 using namespace std;
 
 void jacobi( cdouble tol, const int max_iteration,
-			 const unsigned int n_dof,
+			 cuint n_dof,
 			 double* u_new,
 			 double* u_old,
 			 double** M,
@@ -25,7 +25,7 @@ double convergence_check ( double** M,
 						   double* R,
 						   const int n_dof);
 
-double* v_cycle( cuint n_dof, cuint I, cuint J, cuint K,
+double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
 			  cdouble tol, cuint max_iteration,
 			  cdouble width, cdouble length, cdouble height,

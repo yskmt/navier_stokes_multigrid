@@ -26,14 +26,16 @@ void fd_matrix( double** M,
 				cuint I, cuint J, cuint K,
 				const double dx2i,
 				const double dy2i,
-				const double dz2i
+				const double dz2i,
+				cuint n_dof
 				);
 
 void load_vector( double* F,
 				  cuint n_dof,
 				  cuint I,
 				  cuint J,
-				  cuint K);
+				  cuint K
+				  );
 
 int boundary_conditins( cuint n_dof,
 						cuint I,
