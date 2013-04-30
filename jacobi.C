@@ -23,6 +23,29 @@ double convergence_check ( double** M,
 	return E; 
 }
 
+double convergence_check_sparse ( const vector<double>& val,
+								  const vector<uint>& col_ind,
+								  const vector<uint>& row_ptr,
+								  double* U,
+								  double* F,
+								  double* R,
+								  cuint n_dof)
+{
+	double E=0;
+#pragma omp parallel for shared(R,val,col_ind,row_ptr,U,F,E)
+	for(int i=0; i<row_ptr.size()-1; i++){
+		R[i] = 0.0;
+		for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
+			R[i] -= val[j]*U[col_ind[j]];
+		}
+		R[i] += F[i];
+		E += R[i]*R[i];
+	}
+	
+	return E; 
+}
+
+
 // jacobi method
 void jacobi( cdouble tol,
 			 cuint max_iteration,
@@ -36,8 +59,9 @@ void jacobi( cdouble tol,
 {
 	// iteration counter
 	int ct = 0;
-
-	while(Er>tol && ct<max_iteration){
+	cdouble tol2 = tol*tol;
+	
+	while(Er>tol2 && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
 		
@@ -67,59 +91,54 @@ void jacobi( cdouble tol,
 }
 
 // sparse jacobi method
-/*
 void jacobi_sparse( cdouble tol,
 					cuint max_iteration,
 					cuint n_dof,
 					double* U,
 					double* U_tmp,
-					double** M,
+					const vector<double>& val,
+					const vector<uint>& col_ind,
+					const vector<uint>& row_ptr,
 					double* F,
 					double& Er,
 					double* R)
 {
 	// iteration counter
 	int ct = 0;
-
-	while(Er>tol && ct<max_iteration){
+	cdouble tol2 = tol*tol;
+	
+	while(Er>tol2 && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
 		
-#pragma omp parallel for shared(M,F,U_tmp,U)
-		while(n<M.size()){
-			double S=get<2>(M[n]);
-			cuint i= get<0>(M[n]);
-			cuint j= get<1>(M[n]);
-			while(get<0>(M[n])==i){
-
-			}
-		}
-		
-		
-		for(int i=0; i<n_dof; i++){
+#pragma omp parallel for shared(row_ptr,val,col_ind,F,U_tmp,U)
+		for(int i=0; i<row_ptr.size()-1; i++){
 			double S=0;
-			for(int j=0; j<n_dof; j++){
-				if(i!=j)
-					S += M[i][j]*U_tmp[j]; 
+			double T=0;
+			for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
+				// cout<<"U_tmp "<<U_tmp[col_ind[j]]<<endl;
+				if(i!=col_ind[j])
+					S += val[j]*U_tmp[col_ind[j]];
+				else{ // get diagonal element
+					T = val[j];					
+				}
 			}
-			// if(M[i][i]==0) cout<<"zero "<<i<<endl;
-			// if(F[i] != F[i]) cout<<F[i]<<" "<<i<<endl;
-			U[i] = 1/M[i][i] * (F[i] - S);
-			// cout<<U[i]<<endl;
+			U[i] = 1/T * (F[i]-S);
 		}
 
-		Er = convergence_check(M, U, F, R, n_dof);
-		// cout<<"Er: "<<Er<<endl;
+		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
+		cout<<"i: "<<ct<<" Er: "<<Er<<endl;
 		ct++;
 	}
-
+	
 	if(max_iteration==0) 		
-		Er = convergence_check(M, U, F, R, n_dof);
+		// Er = convergence_check(M, U, F, R, n_dof);
+		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
 	
 	
 	return;
 }
-*/
+
 
 // multigrid v-cycle
 double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
@@ -133,19 +152,27 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 	// for global constraint
 	n_dof = n_dof+1;
+
 	// initialize finite difference matrix (+1 for global constraint)
-	double** M = new double*[n_dof];
-	for(int n = 0; n < (n_dof); n++)
-		M[n] = new double[n_dof];
-	// initialize 
-#pragma omp parallel for shared(n_dof, M)
-	for(int i=0; i<n_dof; i++)
-		for(int j=0; j<n_dof; j++)
-			M[i][j] = 0;
+// 	double** M = new double*[n_dof];
+// 	for(int n = 0; n < (n_dof); n++)
+// 		M[n] = new double[n_dof];
+// 	// initialize 
+// #pragma omp parallel for shared(n_dof, M)
+// 	for(int i=0; i<n_dof; i++)
+// 		for(int j=0; j<n_dof; j++)
+// 			M[i][j] = 0;
+
+	cout<<"fd_matrix_sparse"<<endl;
+	vector<tuple <uint, uint, double> > M_sp;
+	vector<double> val;
+	vector<uint> col_ind;
+	vector<uint> row_ptr(1,0);
 	
 	// create finite difference matrix
 	cout<<"create finite difference matrix"<<endl;
-	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
+	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
+					 I,J,K, dx2i, dy2i, dz2i, n_dof);
 
 	// construct load vector
 	// load vector is created only at the level 0
@@ -183,7 +210,9 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	// perform pre-smoothing and compute residual
 	cout<<"pre-smoothing "<<pre_smooth_iteration<<" times"<<endl;
-	jacobi(tol, pre_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
+	Er = tol*10;
+	jacobi_sparse(tol, pre_smooth_iteration, n_dof, U, U_tmp,
+				  val, col_ind, row_ptr, F, Er, R);
 		
 	// restriction of residual on coarse grid
 	double* F_coar;
@@ -209,7 +238,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	// restric residual to the coarrse grid
 	cout<<"restriction"<<endl;
 	restriction( R, F_coar, I, J, K, I_coar, J_coar, K_coar);
-	F_coar[n_dof_coar-1] = -R[n_dof-1]/n_dof*n_dof_coar; // global constraint
+	F_coar[n_dof_coar-1] = 0;//-R[n_dof-1]/n_dof*n_dof_coar; // global constraint
 	
 	// construct solution vector on coarse grid
 	double* U_coar = new double[n_dof_coar];
@@ -227,31 +256,43 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		}
 
 		// initialize finite difference matrix (+1 for global constraint)
-		double** M_coar = new double*[n_dof_coar];
-		for(int n = 0; n < (n_dof_coar); n++)
-			M_coar[n] = new double[n_dof_coar];
-		// initialize 
-#pragma omp parallel for shared(M_coar)
-		for(int i=0; i<n_dof_coar; i++)
-			for(int j=0; j<n_dof_coar; j++)
-				M_coar[i][j] = 0;
+// 		double** M_coar = new double*[n_dof_coar];
+// 		for(int n = 0; n < (n_dof_coar); n++)
+// 			M_coar[n] = new double[n_dof_coar];
+// 		// initialize 
+// #pragma omp parallel for shared(M_coar)
+// 		for(int i=0; i<n_dof_coar; i++)
+// 			for(int j=0; j<n_dof_coar; j++)
+// 				M_coar[i][j] = 0;
+		vector<tuple <uint, uint, double> > M_sp_coar;
+		vector<double> val_coar;
+		vector<uint> col_ind_coar;
+		vector<uint> row_ptr_coar(1,0);
+		
 		// create finite difference matrix
 		cout<<"create finite difference matrix"<<endl;
-		fd_matrix(M_coar, I_coar,J_coar,K_coar,
-				  dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
+		// fd_matrix_sparse(M_coar, I_coar,J_coar,K_coar,
+		// 				 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
+		fd_matrix_sparse(M_sp_coar, val_coar, col_ind_coar, row_ptr_coar,
+						 I_coar,J_coar,K_coar,
+						 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
 
+		
 		// residual on coarse grid
 		double* R_coar = new double[n_dof_coar];
 		
 		// exact Jacobi method
-		jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
-			   M_coar, F_coar, Er, R_coar);
-
+		// jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
+			   // M_coar, F_coar, Er, R_coar);
+		Er = tol*10;
+		jacobi_sparse(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
+					  val_coar, col_ind_coar, row_ptr_coar, F_coar,
+					  Er, R_coar);
+		
 		// write_results( U_coar,
 		// 			   n_dof_coar,
 		// 			   I_coar, J_coar, K_coar,
 		// 			   dx_coar, dy_coar, dz_coar, level);
-
 		
 		delete[] R_coar;
 		
@@ -271,11 +312,12 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		cdouble dy_coar = length/(J_coar);
 		cdouble dz_coar = height/(K_coar);
 
-	  
-		// write_results( U_coar,
-		// 			   n_dof_coar,
-		// 			   I_coar, J_coar, K_coar,
-		// 			   dx_coar, dy_coar, dz_coar, level);
+
+		// write partial results for test purpose
+		write_results( U_coar,
+					   n_dof_coar,
+					   I_coar, J_coar, K_coar,
+					   dx_coar, dy_coar, dz_coar, level);
 		 
 	}
 
@@ -299,17 +341,21 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	if(level==0)
 		post_smooth_iteration=max_iteration;
 	else
-		post_smooth_iteration=pre_smooth_iteration;
+		post_smooth_iteration=( pre_smooth_iteration+1)*1000;
 
 	cout<<"post-smoothing "<<post_smooth_iteration<<" times on level "
 		<<level<<endl;
-	jacobi(tol, post_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
+	// jacobi(tol, post_smooth_iteration, n_dof, U, U_tmp, M, F, Er, R);
+	Er = tol*10;
+	jacobi_sparse(tol, post_smooth_iteration, n_dof, U, U_tmp,
+				  val, col_ind, row_ptr, F, Er, R);
 
+	
 	// cleanup
-	for(int n = 0; n< n_dof; n++) {
-		delete[] M[n];
-	}
-	delete[] M;
+	// for(int n = 0; n< n_dof; n++) {
+	// 	delete[] M[n];
+	// }
+	// delete[] M;
 
 	if (level==0)
 		delete[] F;
@@ -437,19 +483,29 @@ double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
 	// for global constraint
 	n_dof = n_dof+1;
 	// initialize finite difference matrix (+1 for global constraint)
-	double** M = new double*[n_dof];
-	for(int n = 0; n < (n_dof); n++)
-		M[n] = new double[n_dof];
-	// initialize 
-#pragma omp parallel for shared(n_dof, M)
-	for(int i=0; i<n_dof; i++)
-		for(int j=0; j<n_dof; j++)
-			M[i][j] = 0;
-	
+// 	double** M = new double*[n_dof];
+// 	for(int n = 0; n < (n_dof); n++)
+// 		M[n] = new double[n_dof];
+// 	// initialize 
+// #pragma omp parallel for shared(n_dof, M)
+// 	for(int i=0; i<n_dof; i++)
+// 		for(int j=0; j<n_dof; j++)
+// 			M[i][j] = 0;
+
+	cout<<"fd_matrix_sparse"<<endl;
+	vector<tuple <uint, uint, double> > M_sp;
+	vector<double> val;
+	vector<uint> col_ind;
+	vector<uint> row_ptr(1,0);
+		
+	// create finite difference matrix
+	// cout<<"create finite difference matrix"<<endl;
+	// fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
 	// create finite difference matrix
 	cout<<"create finite difference matrix"<<endl;
-	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
-
+	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
+					 I,J,K, dx2i, dy2i, dz2i, n_dof);
+	
 	// construct load vector
 	// load vector is created only at the level 0
 	if(level==0){
@@ -485,13 +541,16 @@ double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
 
 	// perform full jacobi iteration
 	cout<<"jacobi method "<<max_iteration<<" times"<<endl;
-	jacobi(tol, max_iteration, n_dof, U, U_tmp, M, F, Er, R);
+	// jacobi(tol, max_iteration, n_dof, U, U_tmp, M, F, Er, R);
+	jacobi_sparse(tol, max_iteration, n_dof, U, U_tmp,
+				  val, col_ind, row_ptr, F,
+				  Er, R);
 		
-	// cleanup
-	for(int n = 0; n< n_dof; n++) {
-		delete[] M[n];
-	}
-	delete[] M;
+	// // cleanup
+	// for(int n = 0; n< n_dof; n++) {
+	// 	delete[] M[n];
+	// }
+	// delete[] M;
 
 	if (level==0)
 		delete[] F;

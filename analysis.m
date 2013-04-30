@@ -5,28 +5,28 @@ close all
 % F=load('vector_0.dat');
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
 
-M = load('test_matrix.dat');
-load('test_sp_matrix.dat'); 
-test_sp_matrix(:,1) = test_sp_matrix(:,1)+1;
-test_sp_matrix(:,2) = test_sp_matrix(:,2)+1;
-S = spconvert(test_sp_matrix);
-
-M2 = full(S);
-sum(sum(abs(M-M2)))
-max_level=1;
+% M = load('test_matrix.dat');
+% load('test_sp_matrix.dat'); 
+% test_sp_matrix(:,1) = test_sp_matrix(:,1)+1;
+% test_sp_matrix(:,2) = test_sp_matrix(:,2)+1;
+% S = spconvert(test_sp_matrix);
+% 
+% M2 = full(S);
+% sum(sum(abs(M-M2)))
+max_level=2;
 
 for i=1:max_level
     U{i} = load(sprintf('results_%i.dat',i));
     legend_names{i} = sprintf('level %i', i); 
 end
 U{max_level+1} = load('results_100.dat');
-legend_names{max_level+2} = 'final solution';
-legend_names{max_level+3} = 'exact solution';
+legend_names{max_level+1} = 'final solution';
+legend_names{max_level+2} = 'exact solution';
 
 hold on
 col=hsv(max_level+3);
-for i=0:max_level+1
-   h= plot( U{i+1}(1:end,1),U{i+1}(1:end,4), '-o');
+for i=1:max_level+1
+   h= plot( U{i}(1:end,1),U{i}(1:end,4), '-o');
    set(h, 'Color',col(i+1,:));
 end
 

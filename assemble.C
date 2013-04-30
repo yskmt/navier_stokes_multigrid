@@ -72,9 +72,9 @@ void fd_matrix( double** M,
 
 // 2nd order stencil
 void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
-						vector<double> val,
-						vector<uint> col_ind,
-						vector<uint> row_ptr,
+						vector<double>& val,
+						vector<uint>& col_ind,
+						vector<uint>& row_ptr,
 						cuint I, cuint J, cuint K,
 						const double dx2i,
 						const double dy2i,
@@ -184,9 +184,11 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 
 	// merge and sort
 	// THIS PART CAN BE PARALLELIZED
+	cout<<"sorting..."<<endl;
 	for(int i=1; i<nt; i++)
 		M[0].insert( M[0].end(), M[i].begin(), M[i].end() );
 	sort(M[0].begin(), M[0].end(), comp_pairs);
+	cout<<"done"<<endl;
 	
 	// consolidate
 	M_sp.push_back(M[0][0]);
@@ -207,6 +209,7 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 
    
 	// convert to CSR format
+	cout<<"converting to CSR format"<<endl;
 	val.resize(M_sp.size(),0.0);
 	col_ind.resize(M_sp.size(), 0);
 	
@@ -215,22 +218,27 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 		val[i] = get<2>(M_sp[i]);
 		col_ind[i] = get<1>(M_sp[i]);
 	}
-	for(int i=0; i<M_sp.size(); i++){
+	for(int i=1; i<M_sp.size(); i++){
 		if(get<0>(M_sp[i])!=get<0>(M_sp[i-1]))
 		   row_ptr.push_back(i);
 	}
-	
+	row_ptr.push_back(M_sp.size());
 
-	ofstream file_out("test_sp_matrix.dat");
-	for(int i=0; i<M_sp.size(); i++){
-		file_out<<get<0>(M_sp[i])<<" "<<get<1>(M_sp[i])
-			<<" "<<get<2>(M_sp[i])<<endl;
-	}
-	file_out.close();
+	// for(int i=0; i<row_ptr.size(); i++)
+	// 	cout<<row_ptr[i]<<endl;
+	cout<<"done"<<endl;
+	
+	// // output to file for testing purpose
+	// ofstream file_out("test_sp_matrix.dat");
+	// for(int i=0; i<M_sp.size(); i++){
+	// 	file_out<<get<0>(M_sp[i])<<" "<<get<1>(M_sp[i])
+	// 		<<" "<<get<2>(M_sp[i])<<endl;
+	// }
+	// file_out.close();
 	
 }
 
-
+// assemble a load vector (only on level 0)
 void load_vector( double* F,
 				  cuint n_dof,
 				  cuint I,

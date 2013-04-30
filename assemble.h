@@ -23,9 +23,9 @@ void fd_matrix( double** M,
 
 // 2nd order stencil
 void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
-						vector<double> val,
-						vector<uint> col_ind,
-						vector<uint> row_ptr,
+						vector<double>& val,
+						vector<uint>& col_ind,
+						vector<uint>& row_ptr,
 						cuint I, cuint J, cuint K,
 						const double dx2i,
 						const double dy2i,
@@ -46,6 +46,7 @@ int boundary_conditins( cuint n_dof,
 						double** M,
 						double* F
 						);
+
 // insert index and value into a sparse matrix
 void sparse_insert( vector<tuple<uint, uint, double > >& M,
 					cuint i, cuint j, cdouble v);
