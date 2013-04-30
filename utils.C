@@ -1,7 +1,7 @@
 #include "utils.h"
 
 // comparison function for sorting pairs
-bool comp_pairs( const tuple<uint, uint, double>& i,
+int comp_pairs( const tuple<uint, uint, double>& i,
 				 const tuple<uint, uint, double>& j ) {
     if( (get<0>(i)) < (get<0>(j)) ) return true;
 	else if( get<0>(i) == get<0>(j)) return (get<1>(i)) < (get<1>(j));

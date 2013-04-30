@@ -1,5 +1,6 @@
 #include "assemble.h"
 #include "utils.h"
+#include "msort.h"
 
 // 2nd order stencil
 void fd_matrix( double** M,
@@ -187,7 +188,12 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 	cout<<"sorting..."<<endl;
 	for(int i=1; i<nt; i++)
 		M[0].insert( M[0].end(), M[i].begin(), M[i].end() );
-	sort(M[0].begin(), M[0].end(), comp_pairs);
+	// sort(M[0].begin(), M[0].end(), comp_pairs);
+	vector<tuple <uint, uint, double> > tmp;
+	tmp.resize(M[0].size());	
+	mergesort(&M[0][0], nt, M[0].size(), &tmp[0] );
+
+
 	cout<<"done"<<endl;
 	
 	// consolidate
