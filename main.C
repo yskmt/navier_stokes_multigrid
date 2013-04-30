@@ -10,14 +10,28 @@ int main( int argc, char** argv )
 {
 	// number of threas
 	nt=1;
-	if(argc>1) nt = atoi(argv[1]);
+	uint I_size=16;
+	uint J_size=16;
+	uint K_size=16; // prblem size (n_dof=n_size^3)
+	uint max_level=0; // maximum v-cycle level
+	if(argc>5){
+		nt = atoi(argv[1]);
+		max_level = atoi(argv[2]);
+		I_size = atoi(argv[3]);
+		J_size = atoi(argv[4]);
+		K_size = atoi(argv[5]);
+	}
+	else{
+		cout<<"multigrid [# of threads] [max level] [I_size] [J_size] [K_size]"<<endl;
+		return 0;
+	}
 	
 	// number of nodes in each dimension
 	// minimum size =3*3*3, should be 2^n+1: n=max_level-1
 	// should be 2^n due to periodic domain
-	cuint I=32;
-	cuint J=32;
-	cuint K=32;
+	cuint I=I_size;
+	cuint J=J_size;
+	cuint K=K_size;
 	cuint n_dof = I*J*K;
 	
 	// domain size
@@ -47,7 +61,6 @@ int main( int argc, char** argv )
 	cdouble tol = 0.01;
 	cuint max_iteration = 10000;
 	cuint pre_smooth_iteration = 10;
-	cuint max_level=3;
 
 	double* F;
 	double Er = tol*10;
@@ -98,7 +111,7 @@ int main( int argc, char** argv )
 	
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
-	cout<<"writing results"<<endl;		
+			
 	write_results( U,
 				   n_dof,
 				   I, J, K, dx, dy, dz, 100);

@@ -1,7 +1,7 @@
 # Makefile: CSE391 Final Project
 # Geometric Multigrid
 
-CC:=gcc
+CC:=g++
 
 multigrid: jacobi.o main.o assemble.o utils.o IO.o
 	$(CC) jacobi.o main.o assemble.o utils.o IO.o -fopenmp -std=c++11 -o multigrid

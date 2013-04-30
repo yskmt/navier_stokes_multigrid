@@ -13,7 +13,7 @@ close all
 % 
 % M2 = full(S);
 % sum(sum(abs(M-M2)))
-max_level=2;
+max_level=4;
 
 for i=1:max_level
     U{i} = load(sprintf('results_%i.dat',i));
