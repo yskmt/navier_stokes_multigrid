@@ -66,6 +66,61 @@ void jacobi( cdouble tol,
 	return;
 }
 
+// sparse jacobi method
+/*
+void jacobi_sparse( cdouble tol,
+					cuint max_iteration,
+					cuint n_dof,
+					double* U,
+					double* U_tmp,
+					double** M,
+					double* F,
+					double& Er,
+					double* R)
+{
+	// iteration counter
+	int ct = 0;
+
+	while(Er>tol && ct<max_iteration){
+		for(int i=0;i<n_dof;i++)
+			U_tmp[i]=U[i];
+		
+#pragma omp parallel for shared(M,F,U_tmp,U)
+		while(n<M.size()){
+			double S=get<2>(M[n]);
+			cuint i= get<0>(M[n]);
+			cuint j= get<1>(M[n]);
+			while(get<0>(M[n])==i){
+
+			}
+		}
+		
+		
+		for(int i=0; i<n_dof; i++){
+			double S=0;
+			for(int j=0; j<n_dof; j++){
+				if(i!=j)
+					S += M[i][j]*U_tmp[j]; 
+			}
+			// if(M[i][i]==0) cout<<"zero "<<i<<endl;
+			// if(F[i] != F[i]) cout<<F[i]<<" "<<i<<endl;
+			U[i] = 1/M[i][i] * (F[i] - S);
+			// cout<<U[i]<<endl;
+		}
+
+		Er = convergence_check(M, U, F, R, n_dof);
+		// cout<<"Er: "<<Er<<endl;
+		ct++;
+	}
+
+	if(max_iteration==0) 		
+		Er = convergence_check(M, U, F, R, n_dof);
+	
+	
+	return;
+}
+*/
+
 // multigrid v-cycle
 double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble dx2i, cdouble dy2i, cdouble dz2i,

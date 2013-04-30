@@ -71,20 +71,25 @@ void fd_matrix( double** M,
 }
 
 // 2nd order stencil
-void fd_matrix_sparse( cuint I, cuint J, cuint K,
-					   const double dx2i,
-					   const double dy2i,
-					   const double dz2i,
-					   cuint n_dof )
+void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
+						vector<double> val,
+						vector<uint> col_ind,
+						vector<uint> row_ptr,
+						cuint I, cuint J, cuint K,
+						const double dx2i,
+						const double dy2i,
+						const double dz2i,
+						cuint n_dof )
 {
-	// initialize sparse matrix (row#, col#, value)
-	vector<tuple <uint, uint, double> >M;
+	// number of threads
 	cuint nt=2;
 
-	vector< vector<tuple <uint, uint, double> > > M_sp;
-	M_sp.resize(nt);
+	// initialize sparse matrix (row#, col#, value)
+	vector<vector<tuple <uint, uint, double> > > M;
+	M.resize(nt);
+
 	
-#pragma omp parallel private(M) shared(M_sp) num_threads(nt)
+#pragma omp parallel  shared(M) num_threads(nt)
 	{
 		cuint myrank = omp_get_thread_num();
 		
@@ -123,45 +128,48 @@ void fd_matrix_sparse( cuint I, cuint J, cuint K,
 					three_d_to_one_d(i,j,k+1, I,J, t_112);
 
 				// I
-				sparse_insert(M, t_111, t_011, dx2i);
-				sparse_insert(M, t_111, t_111 , -2*dx2i);
-				sparse_insert(M, t_111, t_211 , dx2i);
+				sparse_insert(M[myrank], t_111, t_011, dx2i);
+				sparse_insert(M[myrank], t_111, t_111 , -2*dx2i);
+				sparse_insert(M[myrank], t_111, t_211 , dx2i);
 				// J
-				sparse_insert(M, t_111, t_101 , dy2i);
-				sparse_insert(M, t_111, t_111 , -2*dy2i);
-				sparse_insert(M, t_111, t_121 , dy2i);
+				sparse_insert(M[myrank], t_111, t_101 , dy2i);
+				sparse_insert(M[myrank], t_111, t_111 , -2*dy2i);
+				sparse_insert(M[myrank], t_111, t_121 , dy2i);
 				// K
-				sparse_insert(M, t_111, t_110 , dz2i);
-				sparse_insert(M, t_111, t_111 , -2*dz2i);
-				sparse_insert(M, t_111, t_112 , dz2i);
+				sparse_insert(M[myrank], t_111, t_110 , dz2i);
+				sparse_insert(M[myrank], t_111, t_111 , -2*dz2i);
+				sparse_insert(M[myrank], t_111, t_112 , dz2i);
 
 			}
 		}
 	} // end for
 
+
+	// cout<<"setting global constraint"<<endl;
+	// global constraint
+#pragma omp for
+	for(int i=0; i<(n_dof-1); i++){
+		sparse_insert(M[myrank], i, n_dof-1, 1);
+		sparse_insert(M[myrank], n_dof-1, i, 1);
+			// M[i][n_dof-1] = 1;
+		// M[n_dof-1][i] = 1;
+	}
+	if(myrank==0)
+		sparse_insert(M[myrank], n_dof-1, n_dof-1,
+					  n_dof);
+	// else
+	// 	sparse_insert(M[myrank], n_dof-1, n_dof-1,
+	// 				  -get<2>(M[myrank][n_dof-1]));
+	// M[n_dof-1][n_dof-1] = n_dof;
+	
 	// sort and consolidate sparse matrix (row#, col#, value)
 	// cout<<"sorting..."<<endl;
-	sort(M.begin(), M.end(), comp_pairs);
+	// sort(M[myrank].begin(), M[myrank].end(), comp_pairs);
 	// cout<<"sorting done"<<endl;
 	// vector<tuple <uint, uint, double> >M_sp;
-	M_sp[myrank].push_back(M[0]);
+	// M_sp[myrank].push_back(M[0]);
 	uint ct=0;
-		
-	for(int i=1; i<M.size(); i++){
-		if( (get<0>(M_sp[myrank][ct])==get<0>(M[i]))
-			&& (get<1>(M_sp[myrank][ct])==get<1>(M[i])) ){
-			// get<0>(M_sp[ct]) += get<0>(M[i]);
-			// get<1>(M_sp[ct]) += get<1>(M[i]);
-			get<2>(M_sp[myrank][ct]) += get<2>(M[i]);
-		}
-		else{
-			M_sp[myrank].push_back(M[i]);
-			ct++;
-		}
-		// cout<<"i: "<<get<0>(M[i])<<" j: "<<get<1>(M[i])<<" v: "
-		// 	<<get<2>(M[i])<<endl;
-	}
-	
+			
 // #pragma omp critical
 // 	{
 // 		cout<<"thread #: "<<omp_get_thread_num()<<endl;
@@ -174,50 +182,52 @@ void fd_matrix_sparse( cuint I, cuint J, cuint K,
 	
 	} // end parallel region		
 
-	vector<tuple <uint, uint, double> > merged_array, tmp_array;
-	merged_array.resize(M_sp[0].size()+M_sp[1].size());
-	tmp_array.resize(M_sp[0].size()+M_sp[1].size());
+	// merge and sort
+	// THIS PART CAN BE PARALLELIZED
+	for(int i=1; i<nt; i++)
+		M[0].insert( M[0].end(), M[i].begin(), M[i].end() );
+	sort(M[0].begin(), M[0].end(), comp_pairs);
 	
-	// merge two sorted arrays
-   	merge(M_sp[0], M_sp[1],
-		  (cuint) M_sp[0].size(), (cuint) M_sp[1].size(),
-		  merged_array,
-		  tmp_array	
-		  );
-
-	// consolidate again...
-	vector<tuple <uint, uint, double> >merged_sorted_array;
-	merged_sorted_array.push_back(merged_array[0]);
+	// consolidate
+	M_sp.push_back(M[0][0]);
 	uint ct=0;
-	for(int i=1; i<merged_array.size(); i++){
-		if( (get<0>(merged_sorted_array[ct])==get<0>(merged_array[i]))
-			&& (get<1>(merged_sorted_array[ct])==get<1>(merged_array[i])) ){
-			// get<0>(M_sp[ct]) += get<0>(merged_array[i]);
-			// get<1>(M_sp[ct]) += get<1>(merged_array[i]);
-			get<2>(merged_sorted_array[ct]) += get<2>(merged_array[i]);
+	for(int i =1; i<M[0].size(); i++){
+		if( (get<0>(M_sp[ct])==get<0>(M[0][i]))
+			&& (get<1>(M_sp[ct])==get<1>(M[0][i])) ){
+			// get<0>(M_sp[ct]) += get<0>(M[0][i]);
+			// get<1>(M_sp[ct]) += get<1>(M[0][i]);
+			get<2>(M_sp[ct]) += get<2>(M[0][i]);
 		}
 		else{
-			merged_sorted_array.push_back(merged_array[i]);
+			M_sp.push_back(M[0][i]);
 			ct++;
 		}
-		// cout<<"i: "<<get<0>(M[i])<<" j: "<<get<1>(M[i])<<" v: "
-		// 	<<get<2>(M[i])<<endl;
-	}
-	
-	for(int i=0; i<merged_sorted_array.size(); i++){
-		cout<<get<0>(merged_sorted_array[i])<<" "<<get<1>(merged_sorted_array[i])
-			<<" "<<get<2>(merged_sorted_array[i])<<endl;
+
 	}
 
+   
+	// convert to CSR format
+	val.resize(M_sp.size(),0.0);
+	col_ind.resize(M_sp.size(), 0);
 	
-	// cout<<"setting global constraint"<<endl;
-	// global constraint
-	// for(int i=0; i<(n_dof); i++){
-	// 	M[i][n_dof-1] = 1;
-	// 	M[n_dof-1][i] = 1;
-	// }
-	// M[n_dof-1][n_dof-1] = n_dof;
+#pragma omp parallel for shared(val, col_ind, M_sp)
+	for(int i=0; i<M_sp.size(); i++){
+		val[i] = get<2>(M_sp[i]);
+		col_ind[i] = get<1>(M_sp[i]);
+	}
+	for(int i=0; i<M_sp.size(); i++){
+		if(get<0>(M_sp[i])!=get<0>(M_sp[i-1]))
+		   row_ptr.push_back(i);
+	}
+	
 
+	ofstream file_out("test_sp_matrix.dat");
+	for(int i=0; i<M_sp.size(); i++){
+		file_out<<get<0>(M_sp[i])<<" "<<get<1>(M_sp[i])
+			<<" "<<get<2>(M_sp[i])<<endl;
+	}
+	file_out.close();
+	
 }
 
 

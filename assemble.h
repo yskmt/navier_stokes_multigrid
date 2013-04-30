@@ -21,11 +21,16 @@ void fd_matrix( double** M,
 				cuint n_dof
 				);
 
-void fd_matrix_sparse( cuint I, cuint J, cuint K,
-					   const double dx2i,
-					   const double dy2i,
-					   const double dz2i,
-					   cuint n_dof );
+// 2nd order stencil
+void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
+						vector<double> val,
+						vector<uint> col_ind,
+						vector<uint> row_ptr,
+						cuint I, cuint J, cuint K,
+						const double dx2i,
+						const double dy2i,
+						const double dz2i,
+						cuint n_dof );
 
 void load_vector( double* F,
 				  cuint n_dof,

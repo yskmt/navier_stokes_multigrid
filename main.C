@@ -49,9 +49,28 @@ int main()
 
 	start=omp_get_wtime();
 	cout<<"fd_matrix_sparse"<<endl;
-	fd_matrix_sparse(I,J,K, dx2i, dy2i, dz2i, n_dof);
+	vector<tuple <uint, uint, double> > M_sp;
+	vector<double> val(M_sp.size(),0.0);
+	vector<uint> col_ind(M_sp.size(), 0);
+	vector<uint> row_ptr(1,0);
+	
+	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
+					 I,J,K, dx2i, dy2i, dz2i, n_dof+1);
 	cout<<"done"<<endl;
 
+	double** M = new double*[n_dof+1];
+	for(int n = 0; n < (n_dof+1); n++)
+		M[n] = new double[n_dof+1];
+	// initialize 
+#pragma omp parallel for shared(M)
+	for(int i=0; i<n_dof+1; i++)
+		for(int j=0; j<n_dof+1; j++)
+			M[i][j] = 0;	
+	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof+1);
+	char file_name[]="test_matrix.dat";
+	if(write_matrix(n_dof+1,n_dof+1,M, file_name))
+
+	
 	// if(max_level==0){
 	// 	U = v_cycle_0( n_dof, I, J, K,
 	// 			   dx2i, dy2i,  dz2i,
@@ -76,7 +95,7 @@ int main()
 	// 			   n_dof,
 	// 			   I, J, K, dx, dy, dz, 100);
 	
-	delete[] U;
+	// delete[] U;
 	
 	return 0;
 }
