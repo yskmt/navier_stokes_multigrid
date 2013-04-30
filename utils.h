@@ -6,6 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <omp.h>
+#include <tuple>
 
 const double pi=3.14159265359;
 
@@ -16,6 +17,9 @@ typedef unsigned int uint;
 typedef const double cdouble;
 typedef const int cint;
 
+// comparison function for sorting pairs
+bool comp_pairs( const tuple<uint, uint, double>& i,
+				 const tuple<uint, uint, double>& j );
 void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
 					  const unsigned int k,

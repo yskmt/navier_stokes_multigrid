@@ -30,7 +30,7 @@ legend(legend_names,0);
 hold off
 
 % v=zeros(9,9,9);
-
+:,
 % for i=1:length(U)
 %     v(U(i,1)+1,U(i,2)+1,U(i,3)+1) = U(i,4);
 % end

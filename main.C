@@ -48,18 +48,22 @@ int main()
 	double start, end;
 
 	start=omp_get_wtime();
-	if(max_level==0){
-		U = v_cycle_0( n_dof, I, J, K,
-				   dx2i, dy2i,  dz2i,
-				   tol, max_iteration, pre_smooth_iteration,
-				   width, length, height, 0, max_level-1, F, Er);
-	}
-	else{
-		U = v_cycle( n_dof, I, J, K,
-							 dx2i, dy2i,  dz2i,
-							 tol, max_iteration, pre_smooth_iteration,
-							 width, length, height, 0, max_level, F, Er );
-	}
+	cout<<"fd_matrix_sparse"<<endl;
+	fd_matrix_sparse(I,J,K, dx2i, dy2i, dz2i, n_dof);
+	cout<<"done"<<endl;
+
+	// if(max_level==0){
+	// 	U = v_cycle_0( n_dof, I, J, K,
+	// 			   dx2i, dy2i,  dz2i,
+	// 			   tol, max_iteration, pre_smooth_iteration,
+	// 			   width, length, height, 0, max_level-1, F, Er);
+	// }
+	// else{
+	// 	U = v_cycle( n_dof, I, J, K,
+	// 						 dx2i, dy2i,  dz2i,
+	// 						 tol, max_iteration, pre_smooth_iteration,
+	// 						 width, length, height, 0, max_level, F, Er );
+	// }
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
 	cout<<"final error: "<<Er;
@@ -68,9 +72,9 @@ int main()
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
 			
-	write_results( U,
-				   n_dof,
-				   I, J, K, dx, dy, dz, 100);
+	// write_results( U,
+	// 			   n_dof,
+	// 			   I, J, K, dx, dy, dz, 100);
 	
 	delete[] U;
 	

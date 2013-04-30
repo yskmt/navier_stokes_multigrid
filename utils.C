@@ -1,5 +1,13 @@
 #include "utils.h"
 
+// comparison function for sorting pairs
+bool comp_pairs( const tuple<uint, uint, double>& i,
+				 const tuple<uint, uint, double>& j ) {
+    if( (get<0>(i)) < (get<0>(j)) ) return true;
+	else if( get<0>(i) == get<0>(j)) return (get<1>(i)) < (get<1>(j));
+	else return false;
+}
+
 void three_d_to_one_d( const unsigned int i,
 					  const unsigned int j,
 					  const unsigned int k,
