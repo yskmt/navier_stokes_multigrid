@@ -8,9 +8,10 @@ void fd_matrix( double** M,
 				const double dx2i,
 				const double dy2i,
 				const double dz2i,
-				cuint n_dof				)
+				cuint n_dof
+				 )
 {
-#pragma omp parallel for shared(M)
+#pragma omp parallel for shared(M) num_threads(nt)
 	for(int i=0; i<I; i++){
 		for(int j=0; j<J; j++){
 			for(int k=0; k<K; k++){
@@ -80,10 +81,9 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 						const double dx2i,
 						const double dy2i,
 						const double dz2i,
-						cuint n_dof )
+						cuint n_dof
+						)
 {
-	// number of threads
-	cuint nt=2;
 
 	// initialize sparse matrix (row#, col#, value)
 	vector<vector<tuple <uint, uint, double> > > M;
@@ -184,7 +184,6 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 	} // end parallel region		
 
 	// merge and sort
-	// THIS PART CAN BE PARALLELIZED
 	cout<<"sorting..."<<endl;
 	for(int i=1; i<nt; i++)
 		M[0].insert( M[0].end(), M[i].begin(), M[i].end() );
@@ -219,7 +218,7 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 	val.resize(M_sp.size(),0.0);
 	col_ind.resize(M_sp.size(), 0);
 	
-#pragma omp parallel for shared(val, col_ind, M_sp)
+#pragma omp parallel for shared(val, col_ind, M_sp) num_threads(nt)
 	for(int i=0; i<M_sp.size(); i++){
 		val[i] = get<2>(M_sp[i]);
 		col_ind[i] = get<1>(M_sp[i]);
@@ -253,7 +252,7 @@ void load_vector( double* F,
 				  )
 {
 	// construct load vector
-	#pragma omp parallel for shared(F)
+#pragma omp parallel for shared(F) num_threads(nt)
 	for(int n=0; n<n_dof-1; n++){
 		unsigned int i,j,k;
 		one_d_to_three_d( n, I, J, i, j, k);

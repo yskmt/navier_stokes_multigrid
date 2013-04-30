@@ -3,8 +3,15 @@
 #include "utils.h"
 #include "IO.h"
 
-int main()
+// number of threads
+uint nt;
+
+int main( int argc, char** argv )
 {
+	// number of threas
+	nt=1;
+	if(argc>1) nt = atoi(argv[1]);
+	
 	// number of nodes in each dimension
 	// minimum size =3*3*3, should be 2^n+1: n=max_level-1
 	// should be 2^n due to periodic domain
@@ -76,13 +83,13 @@ int main()
 		U = v_cycle_0( n_dof, I, J, K,
 				   dx2i, dy2i,  dz2i,
 				   tol, max_iteration, pre_smooth_iteration,
-				   width, length, height, 0, max_level-1, F, Er);
+					   width, length, height, 0, max_level-1, F, Er );
 	}
 	else{
 		U = v_cycle( n_dof, I, J, K,
 							 dx2i, dy2i,  dz2i,
 							 tol, max_iteration, pre_smooth_iteration,
-							 width, length, height, 0, max_level, F, Er );
+					 width, length, height, 0, max_level, F, Er );
 	}
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
@@ -91,7 +98,7 @@ int main()
 	
 	// for(int i=0; i<n_dof; i++)
 	// 	cout<<u_new[i]<<endl;
-			
+	cout<<"writing results"<<endl;		
 	write_results( U,
 				   n_dof,
 				   I, J, K, dx, dy, dz, 100);

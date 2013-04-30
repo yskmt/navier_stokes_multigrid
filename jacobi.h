@@ -62,7 +62,8 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
 			  cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
 			  cdouble width, cdouble length, cdouble height,
-				 cuint level, cuint max_level, double* F, double& Er);
+				 cuint level, cuint max_level, double* F, double& Er
+				 );
 
 // 3D full weight restriction
 void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
@@ -90,7 +91,8 @@ double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
 				 double* F,
-				   double& Er);
+				   double& Er
+				   );
 
 #endif //JACOBI_H
 

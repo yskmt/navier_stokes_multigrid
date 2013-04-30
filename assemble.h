@@ -30,7 +30,8 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 						const double dx2i,
 						const double dy2i,
 						const double dz2i,
-						cuint n_dof );
+						cuint n_dof
+						);
 
 void load_vector( double* F,
 				  cuint n_dof,

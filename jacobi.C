@@ -6,10 +6,11 @@ double convergence_check ( double** M,
 						   double* U,
 						   double* F,
 						   double* R,
-						   cuint n_dof)
+						   cuint n_dof
+						   )
 {
 	double E=0;
-#pragma omp parallel for shared(R,M,U,F,E)
+#pragma omp parallel for shared(R,M,U,F,E) num_threads(nt)
 	for(int i=0; i<n_dof; i++){
 		R[i] = 0.0;
 		for(int j=0; j<n_dof; j++){
@@ -32,7 +33,7 @@ double convergence_check_sparse ( const vector<double>& val,
 								  cuint n_dof)
 {
 	double E=0;
-#pragma omp parallel for shared(R,val,col_ind,row_ptr,U,F,E)
+#pragma omp parallel for shared(R,val,col_ind,row_ptr,U,F,E) num_threads(nt)
 	for(int i=0; i<row_ptr.size()-1; i++){
 		R[i] = 0.0;
 		for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
@@ -65,7 +66,7 @@ void jacobi( cdouble tol,
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
 		
-#pragma omp parallel for shared(M,F,u_old,u_new)
+#pragma omp parallel for shared(M,F,u_old,u_new) num_threads(nt)
 		for(int i=0; i<n_dof; i++){
 			double S=0;
 			for(int j=0; j<n_dof; j++){
@@ -111,7 +112,7 @@ void jacobi_sparse( cdouble tol,
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
 		
-#pragma omp parallel for shared(row_ptr,val,col_ind,F,U_tmp,U)
+#pragma omp parallel for shared(row_ptr,val,col_ind,F,U_tmp,U) num_threads(nt)
 		for(int i=0; i<row_ptr.size()-1; i++){
 			double S=0;
 			double T=0;
@@ -127,7 +128,7 @@ void jacobi_sparse( cdouble tol,
 		}
 
 		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
-		cout<<"i: "<<ct<<" Er: "<<Er<<endl;
+		// cout<<"i: "<<ct<<" Er: "<<Er<<endl;
 		ct++;
 	}
 	
@@ -147,7 +148,8 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
 				 double* F,
-				 double& Er)
+				 double& Er
+				  )
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 	// for global constraint
@@ -199,7 +201,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	double* U = new double[n_dof];
 	double* U_tmp = new double[n_dof];
 	// initial guess
-#pragma omp parallel for shared(U, U_tmp)
+#pragma omp parallel for shared(U, U_tmp) num_threads(nt)
 	for(int n=0; n<n_dof; n++){
 	    U[n] = 0.0;
 	    U_tmp[n] = 0.0;
@@ -249,7 +251,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		cout<<"level: "<<level+1<<" n_dof: "<<n_dof_coar<<endl;
 
 		// initial guess
-#pragma omp parallel for shared(U_coar, U_coar_tmp)
+#pragma omp parallel for shared(U_coar, U_coar_tmp) num_threads(nt)
 		for(int n=0; n<n_dof_coar; n++){
 			U_coar[n] = 0.0;
 			U_coar_tmp[n] = 0.0;
@@ -275,7 +277,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		// 				 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
 		fd_matrix_sparse(M_sp_coar, val_coar, col_ind_coar, row_ptr_coar,
 						 I_coar,J_coar,K_coar,
-						 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
+						 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar );
 
 		
 		// residual on coarse grid
@@ -306,7 +308,8 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		U_coar = v_cycle( n_dof_coar-1, I_coar, J_coar, K_coar,
 						  dx2i_coar, dy2i_coar, dz2i_coar,
 						  tol, max_iteration, pre_smooth_iteration,
-						  width, length, height, level+1, max_level, F_coar, Er );
+						  width, length, height, level+1, max_level, F_coar, Er
+						  );
 		
 		cdouble dx_coar = width/(I_coar);
 		cdouble dy_coar = length/(J_coar);
@@ -330,7 +333,7 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	interpolation(U_coar, E, I_coar,J_coar,K_coar, I, J, K);
 
 	// correct the fine grid approximation
-#pragma omp parallel for shared(U,E)
+#pragma omp parallel for shared(U,E) num_threads(nt)
 	for(int i=0; i<n_dof; i++){
 		// cout<<i<<" "<<U[i]<<" "<<E[i]<<" "<<E[i]/U[i]<<endl;
 		U[i] += E[i];
@@ -373,7 +376,7 @@ void restriction( double* R, double* R_new, cuint I, cuint J, cuint K,
 				  cuint I_new, cuint J_new, cuint K_new )
 {	
 	unsigned int nei[3][3][3];
-#pragma omp parallel for shared(R, R_new) private(nei)
+#pragma omp parallel for shared(R, R_new) private(nei) num_threads(nt)
 	for(int i=0; i<I; i+=2){
 		for(int j=0; j<J; j+=2){
 			for(int k=0; k<K; k+=2){
@@ -411,7 +414,7 @@ void interpolation( double* U, double* U_fine,
 	uint box_old[2][2][2];
 	uint box_fine[2][2][2];
 
-#pragma omp parallel for shared(U, U_fine) private(box_old, box_fine)
+#pragma omp parallel for shared(U, U_fine) private(box_old, box_fine) num_threads(nt)
 	for(int i=0; i<I; i++){
 		for(int j=0; j<J; j++){
 			for(int k=0; k<K; k++){
@@ -477,7 +480,8 @@ double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
 				 cdouble width, cdouble length, cdouble height,
 				 cuint level, cuint max_level,
 				 double* F,
-				 double& Er)
+				   double& Er
+				   )
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 	// for global constraint
@@ -504,7 +508,7 @@ double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
 	// create finite difference matrix
 	cout<<"create finite difference matrix"<<endl;
 	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
-					 I,J,K, dx2i, dy2i, dz2i, n_dof);
+					 I,J,K, dx2i, dy2i, dz2i, n_dof );
 	
 	// construct load vector
 	// load vector is created only at the level 0

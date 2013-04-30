@@ -8,14 +8,16 @@
 #include <omp.h>
 #include <tuple>
 
-const double pi=3.14159265359;
-
 using namespace std;
 
 typedef const unsigned int cuint;
 typedef unsigned int uint;
 typedef const double cdouble;
 typedef const int cint;
+
+const double pi=3.14159265359;
+extern unsigned int nt;
+
 
 // comparison function for sorting pairs
 int comp_pairs( const tuple<uint, uint, double>& i,
