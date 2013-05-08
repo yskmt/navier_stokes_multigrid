@@ -6,7 +6,9 @@
 #include <cmath>
 #include <fstream>
 #include <omp.h>
+#include <vector>
 #include <tuple>
+
 
 using namespace std;
 

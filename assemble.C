@@ -233,13 +233,13 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 	// 	cout<<row_ptr[i]<<endl;
 	cout<<"done"<<endl;
 	
-	// // output to file for testing purpose
-	// ofstream file_out("test_sp_matrix.dat");
-	// for(int i=0; i<M_sp.size(); i++){
-	// 	file_out<<get<0>(M_sp[i])<<" "<<get<1>(M_sp[i])
-	// 		<<" "<<get<2>(M_sp[i])<<endl;
-	// }
-	// file_out.close();
+	// output to file for testing purpose
+	ofstream file_out("test_sp_matrix.dat");
+	for(int i=0; i<M_sp.size(); i++){
+		file_out<<get<0>(M_sp[i])<<" "<<get<1>(M_sp[i])
+			<<" "<<get<2>(M_sp[i])<<endl;
+	}
+	file_out.close();
 	
 }
 

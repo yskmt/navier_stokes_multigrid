@@ -2,14 +2,14 @@ clear all
 close all
 
 % M=load('matrix_0.dat');
-% F=load('vector_0.dat');
+F=load('vector_0.dat');
 % scatter3(U(:,1),U(:,2),U(:,3),30,U(:,4),'fill');
 
 % M = load('test_matrix.dat');
-% load('test_sp_matrix.dat'); 
-% test_sp_matrix(:,1) = test_sp_matrix(:,1)+1;
-% test_sp_matrix(:,2) = test_sp_matrix(:,2)+1;
-% S = spconvert(test_sp_matrix);
+load('test_sp_matrix.dat'); 
+test_sp_matrix(:,1) = test_sp_matrix(:,1)+1;
+test_sp_matrix(:,2) = test_sp_matrix(:,2)+1;
+S = spconvert(test_sp_matrix);
 % 
 % M2 = full(S);
 % sum(sum(abs(M-M2)))

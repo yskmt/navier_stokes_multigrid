@@ -1,34 +1,31 @@
 # Makefile: CSE391 Final Project
 # Geometric Multigrid
 
-CC:=g++
+CC=g++
+CFLAGS=-fopenmp  -std=c++11
+LDFLAGS=-fopenmp  -std=c++11
+SOURCES=main.C assemble.C  IO.C  jacobi.C utils.C  v_cycle.C 
+OBJ=$(SOURCES:.C=.o)
+EXE=multigrid
 
-multigrid: jacobi.o main.o assemble.o utils.o IO.o
-	$(CC) jacobi.o main.o assemble.o utils.o IO.o -fopenmp -std=c++11 -o multigrid
+all: $(SOURCES) $(EXE)
 
-jacobi.o: jacobi.C jacobi.h
-	$(CC) jacobi.C -c -fopenmp -std=c++11
+# $(EXE): $(OBJ)
+# 	$(CC) jacobi.o main.o assemble.o utils.o IO.o $(CFLAGS) -o $(EXE)
 
-assemble.o: assemble.C assemble.h utils.C utils.h
-	$(CC) assemble.C -c -fopenmp -std=c++11
+$(EXE): $(OBJ) 
+	$(CC) $(LDFLAGS) $(OBJ) -o $@
 
-utils.o: utils.C utils.h
-	$(CC) utils.C -c -fopenmp -std=c++11
+.C.o:
+	$(CC) $(CFLAGS) -c $< -o $@
 
-IO.o: IO.C IO.h
-	$(CC) IO.C -c -fopenmp -std=c++11
-
-main.o: main.C
-	$(CC) main.C -c -fopenmp -std=c++11
+jacobi.o:jacobi.h
+main.o:jacobi.h assemble.h utils.h IO.h v_cycle.h
 
 run:
 	@ export OMP_NUM_THREADS=1
-	@./multigrid
+	@./multigrid 1 3 32 32 32
 
 clean:
 	@ rm *.o multigrid
-
-run2:
-	@ export OMP_NUM_THREADS=2
-	@./mis_shared
 

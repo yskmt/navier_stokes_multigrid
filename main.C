@@ -2,6 +2,7 @@
 #include "assemble.h"
 #include "utils.h"
 #include "IO.h"
+#include "v_cycle.h"
 
 // number of threads
 uint nt;
@@ -58,7 +59,7 @@ int main( int argc, char** argv )
 	cdouble dz2i = 1.0/(dz*dz);
 
 	// for jacobi method
-	cdouble tol = 0.01;
+	cdouble tol = 0.0001;
 	cuint max_iteration = 10000;
 	cuint pre_smooth_iteration = 10;
 
