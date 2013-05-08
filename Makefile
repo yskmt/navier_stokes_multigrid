@@ -10,9 +10,6 @@ EXE=multigrid
 
 all: $(SOURCES) $(EXE)
 
-# $(EXE): $(OBJ)
-# 	$(CC) jacobi.o main.o assemble.o utils.o IO.o $(CFLAGS) -o $(EXE)
-
 $(EXE): $(OBJ) 
 	$(CC) $(LDFLAGS) $(OBJ) -o $@
 
