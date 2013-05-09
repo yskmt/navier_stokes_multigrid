@@ -76,6 +76,9 @@ int main( int argc, char** argv )
 	// treat nonlinear (advection) terms
 	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
 
+	// implicit viscosity terms
+	// viscosity();
+	
 	/*
 	// for jacobi method
 	cdouble tol = 0.0001;

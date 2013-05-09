@@ -53,9 +53,9 @@ void upwind_difference( const boost::multi_array<double, 3>& U,
 
 // get 1d staggered difference from cell vertices into cell center
 void staggered_first_difference( const boost::multi_array<double, 3>& UV,
-							   boost::multi_array<double, 3>& UV_x,
-							   cdouble h,
-							   cuint dir );
+								 boost::multi_array<double, 3>& UV_x,
+								 cdouble h,
+								 cuint dir );
 
 // get central first difference at center of element
 void central_first_difference( const boost::multi_array<double, 3>& U2,
@@ -64,9 +64,28 @@ void central_first_difference( const boost::multi_array<double, 3>& U2,
 							   cuint dir );
 
 // get mixed edge values
-void calculate_edge_values( boost::multi_array<double, 3>& UV,
-				  boost::multi_array<double, 3>& UW,
+void calculate_edge_values( const boost::multi_array<double, 3>& Ue,
+							const boost::multi_array<double, 3>& Ve,
+							const boost::multi_array<double, 3>& We,
+							boost::multi_array<double, 3>& UV,
+							boost::multi_array<double, 3>& UW,
 							boost::multi_array<double, 3>& VW,
 							cuint nx, cuint ny, cuint nz);
+
+// consolidate advection terms
+void consolidate_advection( boost::multi_array<double, 3>& U,
+							boost::multi_array<double, 3>& V,
+							boost::multi_array<double, 3>& W,
+							boost::multi_array<double, 3>& U2_x,
+							boost::multi_array<double, 3>& V2_y,
+							boost::multi_array<double, 3>& W2_z,
+							boost::multi_array<double, 3>& UV_y,
+							boost::multi_array<double, 3>& UW_z,
+							boost::multi_array<double, 3>& VU_x,
+							boost::multi_array<double, 3>& VW_z,
+							boost::multi_array<double, 3>& WU_x,
+							boost::multi_array<double, 3>& WV_y,
+							cuint nx, cuint ny, cuint nz,
+							cdouble dt );
 
 #endif //ASSEMBLE_H
