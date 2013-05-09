@@ -77,10 +77,12 @@ int main( int argc, char** argv )
 	// treat nonlinear (advection) terms
 	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
 
+	cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	
 	// implicitly solve viscosity terms
-	viscosity( nx, ny, nz,
+	viscosity( U, V, W, nx, ny, nz, hx, hy, hz,
 			   hx2i, hy2i, hz2i,
-			   dt, nu );
+			   dt, nu, bcs );
 	
 	// implicit viscosity terms
 	// viscosity();

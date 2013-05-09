@@ -2,9 +2,14 @@
 
 
 // implicitly solve viscosity
-void viscosity( cuint nx, cuint ny, cuint nz,
-				cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				cdouble dt, cdouble nu )
+void viscosity(  boost::multi_array<double, 3>& U,
+				 boost::multi_array<double, 3>& V,
+				 boost::multi_array<double, 3>& W,
+				 cuint nx, cuint ny, cuint nz,
+				 cdouble hx, cdouble hy, cdouble hz,
+				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
+				 cdouble dt, cdouble nu,
+				 cdouble bcs[][6] )
 {
 	// Lu
 	cuint n_u_dof = (nx-1)*ny*nz;
@@ -12,39 +17,44 @@ void viscosity( cuint nx, cuint ny, cuint nz,
 	vector<double> Lu_val(Lu_sp.size(),0.0);
 	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
 	vector<uint> Lu_row_ptr(1,0);		
-	viscosity_matrix_sparse( Lu_sp,
-							 Lu_val, Lu_col_ind, Lu_row_ptr,
-							 nx-1, ny, nz,
-							 hx2i*dt*nu, hy2i*dt*nu, hz2i*dt*nu,
-							 n_u_dof,
-							 X_DIR);
-
-	// // Lv
-	// cuint n_v_dof = (nx)*(ny-1)*nz;
-	// vector<tuple <uint, uint, double> > Lv_sp;
-	// vector<double> Lv_val(Lv_sp.size(),0.0);
-	// vector<uint> Lv_col_ind(Lv_sp.size(), 0);
-	// vector<uint> Lv_row_ptr(1,0);		
-	// viscosity_matrix_sparse( Lv_sp,
-	// 						 Lv_val, Lv_col_ind, Lv_row_ptr,
-	// 						 nx, ny, nz,
-	// 						 hx2i*dt*nu, hy2i*dt*nu, hz2i*dt*nu,
-	// 						 n_v_dof,
-	// 						 Y_DIR);
+	double* uF = new double[n_u_dof];
+	// set load vector
+	viscosity_load_vector(uF, U);
+	// sparse viscosity matrix and bc modification
+	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
+							 uF, nx-1, ny, nz, hx, hy, hz,
+							 hx2i, hy2i, hz2i, dt, nu, 
+							 bcs[0], X_DIR );
 	
-	// // Lw
-	// cuint n_w_dof = (nx)*ny*(nz-1);
-	// vector<tuple <uint, uint, double> > Lw_sp;
-	// vector<double> Lw_val(Lw_sp.size(),0.0);
-	// vector<uint> Lw_col_ind(Lw_sp.size(), 0);
-	// vector<uint> Lw_row_ptr(1,0);		
-	// viscosity_matrix_sparse( Lw_sp,
-	// 						 Lw_val, Lw_col_ind, Lw_row_ptr,
-	// 						 nx, ny, nz,
-	// 						 hx2i*dt*nu, hy2i*dt*nu, hz2i*dt*nu,
-	// 						 n_w_dof,
-	// 						 Z_DIR);
+	// Lv
+	cuint n_v_dof = (nx)*(ny-1)*nz;
+	vector<tuple <uint, uint, double> > Lv_sp;
+	vector<double> Lv_val(Lv_sp.size(),0.0);
+	vector<uint> Lv_col_ind(Lv_sp.size(), 0);
+	vector<uint> Lv_row_ptr(1,0);		
+	double* vF = new double[n_v_dof];
+	// set load vector
+	viscosity_load_vector(vF, V);
+   	// sparse viscosity matrix and bc modification
+	viscosity_matrix_sparse( Lv_sp, Lv_val, Lv_col_ind, Lv_row_ptr,
+							 vF, nx, ny-1, nz, hx, hy, hz,
+							 hx2i, hy2i, hz2i, dt, nu, 
+							 bcs[1], Y_DIR );
 
+	// Lw
+	cuint n_w_dof = (nx)*(ny)*(nz-1);
+	vector<tuple <uint, uint, double> > Lw_sp;
+	vector<double> Lw_val(Lw_sp.size(),0.0);
+	vector<uint> Lw_col_ind(Lw_sp.size(), 0);
+	vector<uint> Lw_row_ptr(1,0);		
+	double* wF = new double[n_w_dof];
+   	// set load vector
+	viscosity_load_vector(wF, W);
+	// sparse viscosity matrix and bc modification
+	viscosity_matrix_sparse( Lw_sp, Lw_val, Lw_col_ind, Lw_row_ptr,
+							 wF, nx, ny, nz-1, hx, hy, hz,
+							 hx2i, hy2i, hz2i, dt, nu, 
+							 bcs[2], Z_DIR );
 	
 }
 
@@ -54,66 +64,78 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 							  vector<double>& val,
 							  vector<uint>& col_ind,
 							  vector<uint>& row_ptr,
+							  double* F,
 							  cuint nx, cuint ny, cuint nz,
-							  cdouble hx2i,
-							  cdouble hy2i,
-							  cdouble hz2i,
-							  cuint n_dof,
+							  cdouble hx, cdouble hy, cdouble hz,
+							  cdouble hx2i, cdouble hy2i, cdouble hz2i,
+							  cdouble dt, cdouble nu,
+							  cdouble* u_bc,
 							  cuint dir // direction of flow: u, v, or w?
 							  )
 {
 	// initialize sparse matrix (row#, col#, value)
 	vector<vector<tuple <uint, uint, double> > > M;
 	M.resize(nt);
-
-	uint nx_ = nx;
-	uint ny_ = ny;
-	uint nz_ = nz;
-	
-	if(dir==X_DIR) nx_ = nx-1;
-	else if(dir==Y_DIR) ny_ = ny-1;
-	else if(dir==Z_DIR) nz_ = nz-1;
 	
 #pragma omp parallel  shared(M) num_threads(nt)
 	{
 		cuint myrank = omp_get_thread_num();
 		
 #pragma omp for 
-	for(int i=1; i<nx_-1; i++){
-		for(int j=1; j<ny_-1; j++){
-			for(int k=1; k<nz_-1; k++){
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
 
 				unsigned int p,q;
 				unsigned int t_011,t_111,t_211,t_101,t_121,t_110,t_112;
-				three_d_to_one_d(i,  j,  k,   nx_,ny_, t_111);
-				three_d_to_one_d(i-1,j,  k,   nx_,ny_, t_011);
-				three_d_to_one_d(i+1,j,  k,   nx_,ny_, t_211);
-				three_d_to_one_d(i,  j-1,k,   nx_,ny_, t_101);
-				three_d_to_one_d(i,  j+1,k,   nx_,ny_, t_121);
-				three_d_to_one_d(i,  j,  k-1, nx_,ny_, t_110);
-				three_d_to_one_d(i,  j,  k+1, nx_,ny_, t_112);
+				three_d_to_one_d(i,  j,  k,   nx,ny, t_111);
+				three_d_to_one_d(i-1,j,  k,   nx,ny, t_011);
+				three_d_to_one_d(i+1,j,  k,   nx,ny, t_211);
+				three_d_to_one_d(i,  j-1,k,   nx,ny, t_101);
+				three_d_to_one_d(i,  j+1,k,   nx,ny, t_121);
+				three_d_to_one_d(i,  j,  k-1, nx,ny, t_110);
+				three_d_to_one_d(i,  j,  k+1, nx,ny, t_112);
 				
 				// assignning values
 				//U** contribution from left hand side
 				sparse_add(M[myrank], t_111, t_111, -1);
 
 				// avoid boundaries
-				if(i-1!=0)
+				if(i-1>=0)
 					sparse_add(M[myrank], t_111, t_011, hx2i);
+				else // x0
+					F[t_111] -= dt*nu*u_bc[0]/(hx*hx);
+				
 				sparse_add(M[myrank], t_111, t_111, -2*hx2i);
-				if(i+1!=nx_-1)
-					sparse_add(M[myrank], t_111, t_211, hx2i);
-				if(j-1!=0)
-					sparse_add(M[myrank], t_111, t_101, hy2i);
-				sparse_add(M[myrank], t_111, t_111, -2*hy2i);
-				if(j+1!=ny_-1)
-					sparse_add(M[myrank], t_111, t_121, hy2i);
-				if(k-1!=0)
-					sparse_add(M[myrank], t_111, t_110, hz2i);
-				sparse_add(M[myrank], t_111, t_111, -2*hz2i);
-				if(k+1!=nz_-1)
-					sparse_add(M[myrank], t_111, t_112, hz2i);
 
+				if(i+1<nx)
+					sparse_add(M[myrank], t_111, t_211, hx2i);
+				else //xl
+					F[t_111] -= dt*nu/(hx*hx) * u_bc[1];
+						
+				if(j-1>=0)
+					sparse_add(M[myrank], t_111, t_101, hy2i);
+				else // y0
+					F[t_111] -= dt*nu/(hy*hy) * u_bc[2];
+				
+				sparse_add(M[myrank], t_111, t_111, -2*hy2i);
+				
+				if(j+1<ny)
+					sparse_add(M[myrank], t_111, t_121, hy2i);
+				else //yl
+					F[t_111] -= dt*nu/(hy*hy) * u_bc[3];
+					
+				if(k-1>=0)
+					sparse_add(M[myrank], t_111, t_110, hz2i);
+				else // z0
+					F[t_111] -= dt*nu/(hz*hz) * u_bc[4];
+					
+				sparse_add(M[myrank], t_111, t_111, -2*hz2i);
+				
+				if(k+1<nz)
+					sparse_add(M[myrank], t_111, t_112, hz2i);
+				else // zl
+					F[t_111] -= dt*nu/(hz*hz); // * u_bc[5];
 			}
 		}
 	} // end for
@@ -178,51 +200,24 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	
 }
 
-// set dirichlet boudnary condition for implicit viscous solve
-void set_viscouse_bc( const unsigned int n_dof,
-					  const unsigned int nx,
-					  const unsigned int ny,
-					  const unsigned int nz,
-					  vector<vector<tuple <uint, uint, double> > >& M,
-					  double* F,
-					  cuint myrank
-					  )
+// set load vector for implicit viscous solve
+void viscosity_load_vector( double* F,  boost::multi_array<double, 3>& U)
 {
-	// x0, xl
-	for(int j=0; j<ny; j++){
-		for(int k=0; k<nz; k++){
-			uint t0, tl;
-			three_d_to_one_d(0,  j,  k, nx,ny, t0);
-			three_d_to_one_d(nx-1,  j,  k, nx,ny, tl);
+	boost::multi_array_types::size_type const* sizes = U.shape();
+	cuint nx = sizes[0];
+	cuint ny = sizes[1];
+	cuint nz = sizes[2];
 
-			sparse_add(M[myrank], t0, t0, 1);
-			sparse_add(M[myrank], tl, tl, 1);
+	for(int i=0; i<(nx); i++){
+		for(int j=0; j<(ny); j++){
+			for(int k=0; k<(nz); k++){
+				uint t;
+				three_d_to_one_d(i,  j,  k, nx,ny, t);
+
+				F[t] = U[i][j][k];
+			}
 		}
 	}
 
-	// y0, yl
-	for(int i=0; i<nx; i++){
-		for(int k=0; k<nz; k++){
-			uint t0, tl;
-			three_d_to_one_d(i,  0,  k, nx,ny, t0);
-			three_d_to_one_d(i,  ny-1,  k, nx,ny, tl);
-
-			sparse_add(M[myrank], t0, t0, 1);
-			sparse_add(M[myrank], tl, tl, 1);
-		}
-	}
-	
-	// z0, zl
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny; j++){
-			uint t0, tl;
-			three_d_to_one_d(i,  j,  0, nx,ny, t0);
-			three_d_to_one_d(i,  j,  nz-1, nx,ny, tl);
-
-			sparse_add(M[myrank], t0, t0, 1);
-			sparse_add(M[myrank], tl, tl, 1);
-		}
-	}
-		
 	return;
 }

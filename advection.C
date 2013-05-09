@@ -72,7 +72,6 @@ void advection( boost::multi_array<double, 3>& U,
 	staggered_first_difference(  U2c, U2_x, hx, X_DIR );
 	staggered_first_difference(  V2c, V2_y, hy, Y_DIR );
 	staggered_first_difference(  W2c, W2_z, hz, Z_DIR );
-
 	
 	// consolidate advection terms
 	consolidate_advection( U, V, W,
@@ -80,7 +79,6 @@ void advection( boost::multi_array<double, 3>& U,
 						   UV_y, UW_z, VU_x, VW_z, WU_x, WV_y,
 						   nx, ny, nz,
 						   dt );
-	
 	
 	return;
 }
