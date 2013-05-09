@@ -8,7 +8,8 @@
 #include <omp.h>
 #include <vector>
 #include <tuple>
-
+#include <algorithm>
+#include "boost/multi_array.hpp"
 
 using namespace std;
 

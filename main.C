@@ -3,24 +3,43 @@
 #include "utils.h"
 #include "IO.h"
 #include "v_cycle.h"
+#include "advection.h"
 
 // number of threads
 uint nt;
 
 int main( int argc, char** argv )
 {
-	// number of threas
+	// initialize constants
+	cdouble nu = 100; // kinetic viscosity (mu/rho)
+	double dt = 1e-2; //time step
+	cdouble tf = 4.0; // final time
+	
+	// domain size
+	cdouble lx = 1.0; 
+	cdouble ly = 1.0;
+	cdouble lz = 1.0;
+
+	// domain cornders
+	cdouble x_min = 0.0;
+	cdouble y_min = 0.0;
+	cdouble z_min = 0.0;
+	cdouble x_max = x_min+lx;
+	cdouble y_max = y_min+ly;
+	cdouble z_max = z_min+lz;
+	
+	// number of gridpointts in each dimension
 	nt=1;
-	uint I_size=16;
-	uint J_size=16;
-	uint K_size=16; // prblem size (n_dof=n_size^3)
+	uint nx=16;
+	uint ny=16;
+	uint nz=16; // problem size (n_dof=n_size^3)
 	uint max_level=0; // maximum v-cycle level
 	if(argc>5){
 		nt = atoi(argv[1]);
 		max_level = atoi(argv[2]);
-		I_size = atoi(argv[3]);
-		J_size = atoi(argv[4]);
-		K_size = atoi(argv[5]);
+		nx = atoi(argv[3]);
+		ny = atoi(argv[4]);
+		nz = atoi(argv[5]);
 	}
 	else{
 		cout<<"multigrid [# of threads] [max level] [I_size] [J_size] [K_size]"<<endl;
@@ -30,34 +49,30 @@ int main( int argc, char** argv )
 	// number of nodes in each dimension
 	// minimum size =3*3*3, should be 2^n+1: n=max_level-1
 	// should be 2^n due to periodic domain
-	cuint I=I_size;
-	cuint J=J_size;
-	cuint K=K_size;
-	cuint n_dof = I*J*K;
-	
-	// domain size
-	cdouble width = 1.0; 
-	cdouble length = 1.0;
-	cdouble height = 1.0;
 
-	// domain cornders
-	cdouble x_min = 0.0;
-	cdouble y_min = 0.0;
-	cdouble z_min = 0.0;
-	cdouble x_max = x_min+width;
-	cdouble y_max = y_min+length;
-	cdouble z_max = z_min+height;
+	cuint n_dof = nx*ny*nz;
+
+	// number of time steps
+	cuint nt = floor(tf/dt);
+	// corrected time step size
+	dt = tf/nt;
 
 	// mesh size
-	cdouble dx = width/(I);
-	cdouble dy = length/(J);
-	cdouble dz = height/(K);
+	cdouble dx = lx/(nx);
+	cdouble dy = ly/(ny);
+	cdouble dz = lz/(nz);
 
 	// inverse of square of mesh sizes
 	cdouble dx2i = 1.0/(dx*dx);
 	cdouble dy2i = 1.0/(dy*dy);
 	cdouble dz2i = 1.0/(dz*dz);
 
+	// set up initial conditions
+
+	// treat nonlinear (advection) terms
+	advection(nx,ny,nz);
+
+	/*
 	// for jacobi method
 	cdouble tol = 0.0001;
 	cuint max_iteration = 10000;
@@ -94,16 +109,16 @@ int main( int argc, char** argv )
 
 	
 	if(max_level==0){
-		U = v_cycle_0( n_dof, I, J, K,
+		U = v_cycle_0( n_dof, nx, ny, nz,
 				   dx2i, dy2i,  dz2i,
 				   tol, max_iteration, pre_smooth_iteration,
-					   width, length, height, 0, max_level-1, F, Er );
+					   lx, lz, lz, 0, max_level-1, F, Er );
 	}
 	else{
-		U = v_cycle( n_dof, I, J, K,
+		U = v_cycle( n_dof, nx, ny, nz,
 							 dx2i, dy2i,  dz2i,
 							 tol, max_iteration, pre_smooth_iteration,
-					 width, length, height, 0, max_level, F, Er );
+					 lx, ly, lz, 0, max_level, F, Er );
 	}
 	end=omp_get_wtime();
 	cout<<"wall clock time = "<<end-start<<endl;
@@ -115,9 +130,11 @@ int main( int argc, char** argv )
 			
 	write_results( U,
 				   n_dof,
-				   I, J, K, dx, dy, dz, 100);
+				   nx, ny, nz, dx, dy, dz, 100);
 	
 	// delete[] U;
+
+	*/
 	
 	return 0;
 }

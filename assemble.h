@@ -2,13 +2,6 @@
 #ifndef ASSEMBLE_H
 #define ASSEMBLE_H
 
-#include <iostream>
-#include <cmath>
-#include <fstream>
-#include <omp.h>
-#include <vector>
-#include <tuple>
-#include <algorithm>
 #include "utils.h"
 
 using namespace std;
@@ -59,5 +52,6 @@ void merge(vector<tuple <uint, uint, double> >& left,
 		   vector<tuple <uint, uint, double> >& result,
 		   vector<tuple <uint, uint, double> >& tmp
 		   );
+
 
 #endif //ASSEMBLE_H
