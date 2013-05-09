@@ -103,39 +103,75 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 				// avoid boundaries
 				if(i-1>=0)
 					sparse_add(M[myrank], t_111, t_011, hx2i);
-				else // x0
-					F[t_111] -= dt*nu*u_bc[0]/(hx*hx);
-				
+				else{ // x0
+					if(dir==X_DIR)
+						F[t_111] -= dt*nu*u_bc[0]/(hx*hx);
+					else{
+						F[t_111] -= dt*nu/(hx*hx)*u_bc[0]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hx2i);
+					}
+				}
+					
 				sparse_add(M[myrank], t_111, t_111, -2*hx2i);
 
 				if(i+1<nx)
 					sparse_add(M[myrank], t_111, t_211, hx2i);
-				else //xl
-					F[t_111] -= dt*nu/(hx*hx) * u_bc[1];
-						
+				else{ //xl
+					if(dir==X_DIR)
+						F[t_111] -= dt*nu/(hx*hx) * u_bc[1];
+					else{
+						F[t_111] -= dt*nu/(hx*hx)*u_bc[1]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hx2i);
+					}
+				}
+				
 				if(j-1>=0)
 					sparse_add(M[myrank], t_111, t_101, hy2i);
-				else // y0
-					F[t_111] -= dt*nu/(hy*hy) * u_bc[2];
-				
+				else{ // y0
+					if(dir==Y_DIR)
+						F[t_111] -= dt*nu/(hy*hy) * u_bc[2];
+					else{
+						F[t_111] -= dt*nu/(hy*hy)*u_bc[2]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hy2i);
+					}
+						
+				}
 				sparse_add(M[myrank], t_111, t_111, -2*hy2i);
 				
 				if(j+1<ny)
 					sparse_add(M[myrank], t_111, t_121, hy2i);
-				else //yl
-					F[t_111] -= dt*nu/(hy*hy) * u_bc[3];
+				else{ //yl
+					if(dir==Y_DIR)
+						F[t_111] -= dt*nu/(hy*hy) * u_bc[3];
+					else{
+						F[t_111] -= dt*nu/(hy*hy)*u_bc[3]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hy2i);
+					}
+				}
 					
 				if(k-1>=0)
 					sparse_add(M[myrank], t_111, t_110, hz2i);
-				else // z0
-					F[t_111] -= dt*nu/(hz*hz) * u_bc[4];
+				else{ // z0
+					if(dir==Z_DIR)
+						F[t_111] -= dt*nu/(hz*hz) * u_bc[4];
+					else{
+						F[t_111] -= dt*nu/(hz*hz)*u_bc[4]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hz2i);
+					}
+				}
 					
 				sparse_add(M[myrank], t_111, t_111, -2*hz2i);
 				
 				if(k+1<nz)
 					sparse_add(M[myrank], t_111, t_112, hz2i);
-				else // zl
-					F[t_111] -= dt*nu/(hz*hz); // * u_bc[5];
+				else{ // zl
+					if(dir==Z_DIR)
+						F[t_111] -= dt*nu/(hz*hz) * u_bc[5];
+					else{
+						F[t_111] -= dt*nu/(hz*hz)*u_bc[5]*2;
+						sparse_add(M[myrank], t_111, t_111, -1*hz2i);
+					}
+				}
 			}
 		}
 	} // end for
