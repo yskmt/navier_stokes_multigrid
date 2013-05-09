@@ -58,19 +58,23 @@ int main( int argc, char** argv )
 	dt = tf/nt;
 
 	// mesh size
-	cdouble dx = lx/(nx);
-	cdouble dy = ly/(ny);
-	cdouble dz = lz/(nz);
+	cdouble hx = lx/(nx);
+	cdouble hy = ly/(ny);
+	cdouble hz = lz/(nz);
 
 	// inverse of square of mesh sizes
-	cdouble dx2i = 1.0/(dx*dx);
-	cdouble dy2i = 1.0/(dy*dy);
-	cdouble dz2i = 1.0/(dz*dz);
+	cdouble hx2i = 1.0/(hx*hx);
+	cdouble hy2i = 1.0/(hy*hy);
+	cdouble hz2i = 1.0/(hz*hz);
 
 	// set up initial conditions
-
+	// interior values
+	boost::multi_array<double, 3> U(boost::extents[nx-1][ny][nz]);
+	boost::multi_array<double, 3> V(boost::extents[nx][ny-1][nz]);
+	boost::multi_array<double, 3> W(boost::extents[nx][ny][nz-1]);
+	
 	// treat nonlinear (advection) terms
-	advection(nx,ny,nz);
+	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
 
 	/*
 	// for jacobi method

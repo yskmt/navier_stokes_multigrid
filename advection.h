@@ -12,10 +12,18 @@ cuint Z_DIR=2;
 cuint XY_DIR=3;
 cuint XZ_DIR=4;
 cuint YZ_DIR=5;
-
+cuint X2_DIR=6;
+cuint Y2_DIR=7;
+cuint Z2_DIR=8;
 
 // treat nonlinear advection terms
-void advection( cuint nx, cuint ny, cuint nz );
+void advection( boost::multi_array<double, 3>& U,
+				boost::multi_array<double, 3>& V,
+				boost::multi_array<double, 3>& W,
+				cuint nx, cuint ny, cuint nz,
+				cdouble hx, cdouble hy, cdouble hz,
+				cdouble dt
+				);
 
 // generate grid matrix
 // dir: direction of velocity: 0:x 1:y 2:z
@@ -33,5 +41,32 @@ void grid_matrix( boost::multi_array<double, 3>& Ue,
 void average( const boost::multi_array<double, 3>& Ue,
 			  boost::multi_array<double, 3>& Ua,
 			  cuint dir );
+
+// get maximum value of the 3d array
+double max_3d_array( const boost::multi_array<double, 3>& U );
+
+
+// get upwinding differences
+void upwind_difference( const boost::multi_array<double, 3>& U,
+						boost::multi_array<double, 3>& Ud,
+						cuint dir );
+
+// get 1d staggered difference from cell vertices into cell center
+void staggered_first_difference( const boost::multi_array<double, 3>& UV,
+							   boost::multi_array<double, 3>& UV_x,
+							   cdouble h,
+							   cuint dir );
+
+// get central first difference at center of element
+void central_first_difference( const boost::multi_array<double, 3>& U2,
+							   boost::multi_array<double, 3>& U2_x,
+							   cdouble h,
+							   cuint dir );
+
+// get mixed edge values
+void calculate_edge_values( boost::multi_array<double, 3>& UV,
+				  boost::multi_array<double, 3>& UW,
+							boost::multi_array<double, 3>& VW,
+							cuint nx, cuint ny, cuint nz);
 
 #endif //ASSEMBLE_H
