@@ -5,10 +5,13 @@
 #include "utils.h"
 #include "assemble.h"
 #include "msort.h"
+#include "jacobi.h"
 
 using namespace std;
 
 // implicit solve viscosity
+
+// implicitly solve viscosity
 void viscosity(  boost::multi_array<double, 3>& U,
 				 boost::multi_array<double, 3>& V,
 				 boost::multi_array<double, 3>& W,
@@ -16,8 +19,8 @@ void viscosity(  boost::multi_array<double, 3>& U,
 				 cdouble hx, cdouble hy, cdouble hz,
 				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
 				 cdouble dt, cdouble nu,
-				 cdouble bcs[][6] );
-
+				 cdouble bcs[][6],
+				 cdouble tol, cuint max_iteration );
 // sparse viscosity matrix
 void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 							  vector<double>& val,

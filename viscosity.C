@@ -9,37 +9,73 @@ void viscosity(  boost::multi_array<double, 3>& U,
 				 cdouble hx, cdouble hy, cdouble hz,
 				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
 				 cdouble dt, cdouble nu,
-				 cdouble bcs[][6] )
+				 cdouble bcs[][6],
+				 cdouble tol, cuint max_iteration )
 {
-	// Lu
-	cuint n_u_dof = (nx-1)*ny*nz;
-	vector<tuple <uint, uint, double> > Lu_sp;
-	vector<double> Lu_val(Lu_sp.size(),0.0);
-	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
-	vector<uint> Lu_row_ptr(1,0);		
-	double* uF = new double[n_u_dof];
-	// set load vector
-	viscosity_load_vector(uF, U);
-	// sparse viscosity matrix and bc modification
-	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
-							 uF, nx-1, ny, nz, hx, hy, hz,
-							 hx2i, hy2i, hz2i, dt, nu, 
-							 bcs[0], X_DIR );
+	double Er;
 	
+// 	// Lu
+// 	cuint n_u_dof = (nx-1)*ny*nz;
+// 	vector<tuple <uint, uint, double> > Lu_sp;
+// 	vector<double> Lu_val(Lu_sp.size(),0.0);
+// 	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
+// 	vector<uint> Lu_row_ptr(1,0);		
+// 	double* Fu = new double[n_u_dof];
+// 	// set load vector
+// 	viscosity_load_vector(Fu, U);
+// 	// sparse viscosity matrix and bc modification
+// 	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
+// 							 Fu, nx-1, ny, nz, hx, hy, hz,
+// 							 hx2i, hy2i, hz2i, dt, nu, 
+// 							 bcs[0], X_DIR );
+// 	// now solve Lu\Fu
+// 	// construct solution vector
+// 	double* Uss = new double[n_u_dof];
+// 	double* Uss_tmp = new double[n_u_dof];
+// 	// initial guess
+// #pragma omp parallel for shared(Uss, Uss_tmp) num_threads(nt)
+// 	for(int n=0; n<n_u_dof; n++){
+// 	    Uss[n] = 0.0;
+// 	    Uss_tmp[n] = 0.0;
+//     }
+// 	// residual and error
+// 	double* Ru = new double[n_u_dof];
+// 	Er = tol*10;
+// 	// jacobi iteration
+// 	jacobi_sparse(tol, max_iteration, n_u_dof, Uss, Uss_tmp,
+// 				  Lu_val, Lu_col_ind, Lu_row_ptr, Fu, Er, Ru);
+			
 	// Lv
 	cuint n_v_dof = (nx)*(ny-1)*nz;
 	vector<tuple <uint, uint, double> > Lv_sp;
 	vector<double> Lv_val(Lv_sp.size(),0.0);
 	vector<uint> Lv_col_ind(Lv_sp.size(), 0);
 	vector<uint> Lv_row_ptr(1,0);		
-	double* vF = new double[n_v_dof];
+	double* Fv = new double[n_v_dof];
 	// set load vector
-	viscosity_load_vector(vF, V);
+	viscosity_load_vector(Fv, V);
    	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lv_sp, Lv_val, Lv_col_ind, Lv_row_ptr,
-							 vF, nx, ny-1, nz, hx, hy, hz,
+							 Fv, nx, ny-1, nz, hx, hy, hz,
 							 hx2i, hy2i, hz2i, dt, nu, 
 							 bcs[1], Y_DIR );
+	// now solve Lv\Fv
+	// construct solution vector
+	double* Vss = new double[n_v_dof];
+	double* Vss_tmp = new double[n_v_dof];
+	// initial guess
+#pragma omp parallel for shared(Vss, Vss_tmp) num_threads(nt)
+	for(int n=0; n<n_v_dof; n++){
+	    Vss[n] = 0.0;
+	    Vss_tmp[n] = 0.0;
+		cout<<"Fv "<<Fv[n]<<endl;
+    }
+	// residual and error
+	double* Rv = new double[n_v_dof];
+	Er = tol*10;
+	// jacobi iteration
+	jacobi_sparse(tol, max_iteration, n_v_dof, Vss, Vss_tmp,
+				  Lv_val, Lv_col_ind, Lv_row_ptr, Fv, Er, Rv);
 
 	// Lw
 	cuint n_w_dof = (nx)*(ny)*(nz-1);
@@ -47,14 +83,36 @@ void viscosity(  boost::multi_array<double, 3>& U,
 	vector<double> Lw_val(Lw_sp.size(),0.0);
 	vector<uint> Lw_col_ind(Lw_sp.size(), 0);
 	vector<uint> Lw_row_ptr(1,0);		
-	double* wF = new double[n_w_dof];
+	double* Fw = new double[n_w_dof];
    	// set load vector
-	viscosity_load_vector(wF, W);
+	viscosity_load_vector(Fw, W);
 	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lw_sp, Lw_val, Lw_col_ind, Lw_row_ptr,
-							 wF, nx, ny, nz-1, hx, hy, hz,
+							 Fw, nx, ny, nz-1, hx, hy, hz,
 							 hx2i, hy2i, hz2i, dt, nu, 
 							 bcs[2], Z_DIR );
+	// now solve Lw\Fw
+	// construct solution vector
+	double* Wss = new double[n_w_dof];
+	double* Wss_tmp = new double[n_w_dof];
+	// initial guess
+#pragma omp parallel for shared(Wss, Wss_tmp) num_threads(nt)
+	for(int n=0; n<n_w_dof; n++){
+	    Wss[n] = 0.0;
+	    Wss_tmp[n] = 0.0;
+    }
+	// residual and error
+	double* Rw = new double[n_w_dof];
+	Er = tol*10;
+	// jacobi iteration
+	jacobi_sparse(tol, max_iteration, n_w_dof, Wss, Wss_tmp,
+				  Lw_val, Lw_col_ind, Lw_row_ptr, Fw, Er, Rw);
+
+	
+	// v_cycle( n_u_dof, nx-1, ny, nz, hx2i, hy2i, hz2i,
+	// 		 tol, max_iteration, pre_smooth_iteration,
+	// 		 lx, ly, lz, 0, max_level, Fu, Er);
+
 	
 }
 

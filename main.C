@@ -31,9 +31,9 @@ int main( int argc, char** argv )
 	
 	// number of gridpointts in each dimension
 	nt=1;
-	uint nx=16;
-	uint ny=16;
-	uint nz=16; // problem size (n_dof=n_size^3)
+	uint nx=5;
+	uint ny=5;
+	uint nz=5; // problem size (n_dof=n_size^3)
 	uint max_level=0; // maximum v-cycle level
 	if(argc>5){
 		nt = atoi(argv[1]);
@@ -78,21 +78,24 @@ int main( int argc, char** argv )
 	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
 
 	cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-	
-	// implicitly solve viscosity terms
-	viscosity( U, V, W, nx, ny, nz, hx, hy, hz,
-			   hx2i, hy2i, hz2i,
-			   dt, nu, bcs );
-	
-	// implicit viscosity terms
-	// viscosity();
-	
-	/*
+
 	// for jacobi method
 	cdouble tol = 0.0001;
 	cuint max_iteration = 10000;
 	cuint pre_smooth_iteration = 10;
+	
+	// implicitly solve viscosity terms
+	viscosity( U, V, W, nx, ny, nz, hx, hy, hz,
+			   hx2i, hy2i, hz2i,
+			   dt, nu, bcs,
+			   tol, max_iteration );
+	
+	// implicit viscosity terms
+	// viscosity();
+	
+	
 
+	/*
 	double* F;
 	double Er = tol*10;
 	double* U;

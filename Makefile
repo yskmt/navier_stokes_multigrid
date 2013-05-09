@@ -22,7 +22,7 @@ viscosity.o: viscosity.h
 
 run:
 	@ export OMP_NUM_THREADS=1
-	@./multigrid 1 3 32 32 32
+	@./multigrid 1 3 5 5 5
 
 clean:
 	@ rm *.o multigrid
