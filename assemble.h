@@ -41,8 +41,8 @@ int boundary_conditins( cuint n_dof,
 						double* F
 						);
 
-// insert index and value into a sparse matrix
-void sparse_insert( vector<tuple<uint, uint, double > >& M,
+// add index and value into a sparse matrix
+void sparse_add( vector<tuple<uint, uint, double > >& M,
 					cuint i, cuint j, cdouble v);
 
 // merge two sorted arrays

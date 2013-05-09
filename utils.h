@@ -9,6 +9,9 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
+#include <omp.h>
+#include <cstdlib>
+
 #include "boost/multi_array.hpp"
 
 using namespace std;
@@ -20,6 +23,16 @@ typedef const int cint;
 
 const double pi=3.14159265359;
 extern unsigned int nt;
+
+cuint X_DIR=0;
+cuint Y_DIR=1;
+cuint Z_DIR=2;
+cuint XY_DIR=3;
+cuint XZ_DIR=4;
+cuint YZ_DIR=5;
+cuint X2_DIR=6;
+cuint Y2_DIR=7;
+cuint Z2_DIR=8;
 
 
 // comparison function for sorting pairs

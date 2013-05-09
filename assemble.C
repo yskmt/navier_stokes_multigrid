@@ -129,17 +129,17 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 					three_d_to_one_d(i,j,k+1, I,J, t_112);
 
 				// I
-				sparse_insert(M[myrank], t_111, t_011, dx2i);
-				sparse_insert(M[myrank], t_111, t_111 , -2*dx2i);
-				sparse_insert(M[myrank], t_111, t_211 , dx2i);
+				sparse_add(M[myrank], t_111, t_011, dx2i);
+				sparse_add(M[myrank], t_111, t_111 , -2*dx2i);
+				sparse_add(M[myrank], t_111, t_211 , dx2i);
 				// J
-				sparse_insert(M[myrank], t_111, t_101 , dy2i);
-				sparse_insert(M[myrank], t_111, t_111 , -2*dy2i);
-				sparse_insert(M[myrank], t_111, t_121 , dy2i);
+				sparse_add(M[myrank], t_111, t_101 , dy2i);
+				sparse_add(M[myrank], t_111, t_111 , -2*dy2i);
+				sparse_add(M[myrank], t_111, t_121 , dy2i);
 				// K
-				sparse_insert(M[myrank], t_111, t_110 , dz2i);
-				sparse_insert(M[myrank], t_111, t_111 , -2*dz2i);
-				sparse_insert(M[myrank], t_111, t_112 , dz2i);
+				sparse_add(M[myrank], t_111, t_110 , dz2i);
+				sparse_add(M[myrank], t_111, t_111 , -2*dz2i);
+				sparse_add(M[myrank], t_111, t_112 , dz2i);
 
 			}
 		}
@@ -150,16 +150,16 @@ void fd_matrix_sparse( 	vector<tuple <uint, uint, double> >& M_sp,
 	// global constraint
 #pragma omp for
 	for(int i=0; i<(n_dof-1); i++){
-		sparse_insert(M[myrank], i, n_dof-1, 1);
-		sparse_insert(M[myrank], n_dof-1, i, 1);
+		sparse_add(M[myrank], i, n_dof-1, 1);
+		sparse_add(M[myrank], n_dof-1, i, 1);
 			// M[i][n_dof-1] = 1;
 		// M[n_dof-1][i] = 1;
 	}
 	if(myrank==0)
-		sparse_insert(M[myrank], n_dof-1, n_dof-1,
+		sparse_add(M[myrank], n_dof-1, n_dof-1,
 					  n_dof);
 	// else
-	// 	sparse_insert(M[myrank], n_dof-1, n_dof-1,
+	// 	sparse_add(M[myrank], n_dof-1, n_dof-1,
 	// 				  -get<2>(M[myrank][n_dof-1]));
 	// M[n_dof-1][n_dof-1] = n_dof;
 	
@@ -311,9 +311,9 @@ int boundary_conditins( const unsigned int n_dof,
 	return n_bd;
 }
  
-// insert index and value into a sparse matrix
- void sparse_insert( vector<tuple<uint, uint, double > >& M,
-		cuint i, cuint j, cdouble v)
+// add index and value into a sparse matrix
+void sparse_add( vector<tuple<uint, uint, double > >& M,
+				 cuint i, cuint j, cdouble v)
 {
 	tuple<uint, uint, double > M_tmp(i, j, v);
 	M.push_back(M_tmp);
@@ -324,7 +324,26 @@ int boundary_conditins( const unsigned int n_dof,
 	// value.push_back(v);
 					
 }
-				
+
+// insert index and value into a sparse matrix
+// note that M should be sorted before use
+void sparse_insert( vector<tuple<uint, uint, double > >& M,
+				 cuint i, cuint j, cdouble v)
+{
+	// replace the value
+	for(int mn=0; mn<M.size(); mn++){
+		if( get<0>(M[mn])==i && get<1>(M[mn])==j){
+			get<2>(M[mn]) = v;
+			return;
+		}
+	}
+
+	// if the value does not exist, add the value
+	sparse_add(M, i,j, v);
+	
+}
+
+
 // merge two sorted arrays 
  void merge(vector<tuple <uint, uint, double> >& left,
 		vector<tuple <uint, uint, double> >& right,

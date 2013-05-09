@@ -4,6 +4,7 @@
 #include "IO.h"
 #include "v_cycle.h"
 #include "advection.h"
+#include "viscosity.h"
 
 // number of threads
 uint nt;
@@ -76,6 +77,11 @@ int main( int argc, char** argv )
 	// treat nonlinear (advection) terms
 	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
 
+	// implicitly solve viscosity terms
+	viscosity( nx, ny, nz,
+			   hx2i, hy2i, hz2i,
+			   dt, nu );
+	
 	// implicit viscosity terms
 	// viscosity();
 	
@@ -99,7 +105,7 @@ int main( int argc, char** argv )
 // 	vector<uint> row_ptr(1,0);
 	
 // 	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
-// 					 I,J,K, dx2i, dy2i, dz2i, n_dof+1);
+// 					 I,J,K, hx2i, hy2i, hz2i, n_dof+1);
 // 	cout<<"done"<<endl;
 
 // 	double** M = new double*[n_dof+1];
@@ -110,20 +116,20 @@ int main( int argc, char** argv )
 // 	for(int i=0; i<n_dof+1; i++)
 // 		for(int j=0; j<n_dof+1; j++)
 // 			M[i][j] = 0;	
-// 	fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof+1);
+// 	fd_matrix(M, I,J,K, hx2i, hy2i, hz2i, n_dof+1);
 // 	char file_name[]="test_matrix.dat";
 // 	if(write_matrix(n_dof+1,n_dof+1,M, file_name))
 
 	
 	if(max_level==0){
 		U = v_cycle_0( n_dof, nx, ny, nz,
-				   dx2i, dy2i,  dz2i,
+				   hx2i, hy2i,  hz2i,
 				   tol, max_iteration, pre_smooth_iteration,
 					   lx, lz, lz, 0, max_level-1, F, Er );
 	}
 	else{
 		U = v_cycle( n_dof, nx, ny, nz,
-							 dx2i, dy2i,  dz2i,
+							 hx2i, hy2i,  hz2i,
 							 tol, max_iteration, pre_smooth_iteration,
 					 lx, ly, lz, 0, max_level, F, Er );
 	}
@@ -137,7 +143,7 @@ int main( int argc, char** argv )
 			
 	write_results( U,
 				   n_dof,
-				   nx, ny, nz, dx, dy, dz, 100);
+				   nx, ny, nz, hx, hy, hz, 100);
 	
 	// delete[] U;
 

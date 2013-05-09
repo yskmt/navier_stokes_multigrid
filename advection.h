@@ -1,20 +1,10 @@
-// assemble matrix and vector
+// advection contributions
 #ifndef ADVECTION_H
 #define ADVECTION_H
 
 #include "utils.h"
 
 using namespace std;
-
-cuint X_DIR=0;
-cuint Y_DIR=1;
-cuint Z_DIR=2;
-cuint XY_DIR=3;
-cuint XZ_DIR=4;
-cuint YZ_DIR=5;
-cuint X2_DIR=6;
-cuint Y2_DIR=7;
-cuint Z2_DIR=8;
 
 // treat nonlinear advection terms
 void advection( boost::multi_array<double, 3>& U,
