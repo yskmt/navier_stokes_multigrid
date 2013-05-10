@@ -14,9 +14,12 @@ void pressure( 	double* U,
 {
 	cuint n_dof = nx*ny*nz;
 
-	// load vector (extra +1 for global constraint)
+	// load vector (extra +1 for global constraint) 
 	double* Fp = new double[n_dof];
-
+	// initialize
+	for(int i=0; i<n_dof; i++)
+		Fp[i] =0;
+	
 	// Lp
 	vector<tuple <uint, uint, double> > Lp_sp;
 	vector<double> Lp_val(Lp_sp.size(),0.0);
@@ -67,7 +70,7 @@ void pressure( 	double* U,
 	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
 	double* Pr_z = new double[(nx)*(ny)*(nz-1)];
 	compute_corrections(  P, Pr_x, Pr_y, Pr_z, nx, ny, nz, hy, hy, hz );
-
+	
 	// 1d index
 	uint t;
 	
@@ -75,7 +78,7 @@ void pressure( 	double* U,
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx-1, ny, t);
-				U[t] -= Pr_x[t];
+				U[t] = Uss[t] - Pr_x[t];
 			}
 		}
 	}
@@ -84,7 +87,7 @@ void pressure( 	double* U,
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx, ny-1, t);
-				V[t] -= Pr_y[t];
+				V[t] = Vss[t] - Pr_y[t];
 			}
 		}
 	}
@@ -93,10 +96,13 @@ void pressure( 	double* U,
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
 				three_d_to_one_d(i,j,k, nx, ny, t);
-				W[t] -= Pr_z[t];
+				W[t] = Wss[t] - Pr_z[t];
 			}
 		}
 	}
+
+	// cleanup
+	delete[] Pr_x, Pr_y, Pr_z;
 
 	return;
 }
@@ -127,7 +133,7 @@ void pressure_rhs( double* F,
 				if(i==0)
 					F[t] += (Uss[t1]-bcs[0][0])/hx;
 				else if(i==nx-1)
-					F[t] += (bcs[0][1]-Uss[t1])/hx;
+					F[t] += (bcs[0][1]-Uss[t0])/hx;
 				else{
 					F[t] += (Uss[t1]-Uss[t0]) / hx;
 				}
@@ -146,7 +152,7 @@ void pressure_rhs( double* F,
 				if(j==0)
 					F[t] += (Vss[t1]-bcs[1][2])/hy;
 				else if(j==ny-1)
-					F[t] += (bcs[1][3]-Vss[t1])/hy;
+					F[t] += (bcs[1][3]-Vss[t0])/hy;
 				else{
 					F[t] += (Vss[t1]-Vss[t0]) / hy;
 				}
@@ -164,8 +170,9 @@ void pressure_rhs( double* F,
 				three_d_to_one_d(i,j,k, nx,ny, t);
 				if(k==0)
 					F[t] += (Wss[t1]-bcs[2][4])/hz;
-				else if(k==nz-1)
-					F[t] += (bcs[2][5]-Wss[t1])/hz;
+				else if(k==nz-1){
+					F[t] += (bcs[2][5]-Wss[t0])/hz;
+				}
 				else{
 					F[t] += (Wss[t1]-Wss[t0]) / hz;
 				}

@@ -68,8 +68,8 @@ void jacobi_sparse( cdouble tol,
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
 		
-#pragma omp parallel for shared(row_ptr,val,col_ind,F,U_tmp,U) num_threads(nt)
-		for(int i=0; i<row_ptr.size()-1; i++){
+#pragma omp parallel for num_threads(nt) shared(row_ptr,val,col_ind,F,U_tmp,U) 
+ 		for(int i=0; i<row_ptr.size()-1; i++){
 			double S=0;
 			double T=0;
 			for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
@@ -87,7 +87,7 @@ void jacobi_sparse( cdouble tol,
 		// cout<<"i: "<<ct<<" Er: "<<Er<<endl;
 		ct++;
 	}
-	
+
 	if(max_iteration==0) 		
 		// Er = convergence_check(M, U, F, R, n_dof);
 		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);

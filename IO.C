@@ -125,6 +125,7 @@ int write_results(  double* U,
 	double* Ue = new double[(nx+1)*(ny+2)*(nz+2)];
 	double* Ve = new double[(nx+2)*(ny+1)*(nz+2)];
 	double* We = new double[(nx+2)*(ny+2)*(nz+1)];
+	
 	grid_matrix(U, Ue, nx-1, ny, nz, nx+1, ny+2, nz+2, X_DIR, bcs[0]);
 	grid_matrix(V, Ve, nx, ny-1, nz, nx+2, ny+1, nz+2, Y_DIR, bcs[1]);
 	grid_matrix(W, We, nx, ny, nz-1, nx+2, ny+2, nz+1, Z_DIR, bcs[2]);
@@ -183,14 +184,33 @@ int write_results(  double* U,
 	// point coordinates and scalar result
 	sprintf(file_name, "results_%i.dat", ts);
 	file_out.open(file_name);
-	for(int n=0; n<n_dof; n++){
-		one_d_to_three_d( n, nx, ny, i, j, k);
-		file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "
-				<<P[n]<<" "
-				<<Uc[n]<<" "
-				<<Vc[n]<<" "
-				<<Wc[n]<<endl;
+
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
+				uint t1, t2, t3, t4;
+				three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
+				three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
+				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
+				three_d_to_one_d(i,j,k, nx,ny, t4);
+				
+				file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "
+						<<P[t4]<<" "
+						<<Uc[t1]<<" "
+						<<Vc[t2]<<" "
+						<<Wc[t3]<<endl;
+			}
+		}
 	}
+	
+	// for(int n=0; n<n_dof; n++){
+	// 	one_d_to_three_d( n, nx, ny, i, j, k);
+	// 	file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "
+	// 			<<P[n]<<" "
+	// 			<<Uc[n]<<" "
+	// 			<<Vc[n]<<" "
+	// 			<<Wc[n]<<endl;
+	// }
 	file_out.close();
 	
 }

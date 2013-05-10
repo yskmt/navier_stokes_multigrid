@@ -98,9 +98,9 @@ int main( int argc, char** argv )
 	cuint n_w_dof = (nx)*ny*(nz-1);
 	
 	// number of time steps
-	cuint nt = floor(tf/dt);
+	cuint nts = floor(tf/dt);
 	// corrected time step size
-	dt = tf/nt;
+	dt = tf/nts;
 
 	// mesh size
 	cdouble hx = lx/(nx);
@@ -123,15 +123,16 @@ int main( int argc, char** argv )
 	
 	// for jacobi method
 	cdouble tol = 0.0001;
-	cuint max_iteration = 100000;
+	cuint max_iteration = 10000000;
 	cuint pre_smooth_iteration = 10;
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
 	// cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-	cdouble bcs[3][6] = {{1,1,1,1,1,1.1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-	
-	for(int ts=0; ts<nt; ts++){
+	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+
+	double start=omp_get_wtime();	
+	for(int ts=0; ts<nts; ts++){
 		cout<<"loop :"<<ts<<endl;
 		
 		// treat nonlinear (advection) terms
@@ -145,17 +146,22 @@ int main( int argc, char** argv )
 				   hx2i, hy2i, hz2i,
 				   dt, nu, bcs,
 				   tol, max_iteration );
-		for(int i=0; i<n_u_dof; i++)
-			// cout<<Uss[i]<<endl;
-			Uss[i] = -Uss[i];
-		for(int i=0; i<n_v_dof; i++)
-			// cout<<Vss[i]<<endl;
-			Vss[i] = -Vss[i];
-		cout<<"Wss"<<endl;
-		for(int i=0; i<n_w_dof; i++)
-			// cout<<Wss[i]<<endl;
-			Wss[i] = -Wss[i];
 
+		// cout<<"Uss"<<endl;
+		// for(int i=0; i<n_u_dof; i++){
+		// 	cout<<Uss[i]<<endl;
+		// 	Uss[i] = -Uss[i];
+		// }
+		// cout<<"Vss"<<endl;
+		// for(int i=0; i<n_v_dof; i++){
+		// 	cout<<Vss[i]<<endl;
+		// 	Vss[i] = -Vss[i];
+		// }
+		// cout<<"Wss"<<endl;
+		// for(int i=0; i<n_w_dof; i++){
+		// 	cout<<Wss[i]<<endl;
+		// 	Wss[i] = -Wss[i];
+		// }
 		
 		// solve for pressure and update
 		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
@@ -165,6 +171,9 @@ int main( int argc, char** argv )
 		write_results( U, V, W, P, n_dof, nx, ny, nz, hx, hy, hz, ts, bcs);
 
 	}
+	double end=omp_get_wtime();
+	cout<<"wall clock time: "<<end-start<<" with "<<nt<<" threads"<<endl;
+	
 	/*
 	double* F;
 	double Er = tol*10;

@@ -5,10 +5,10 @@ nt = 0;
 
 for i=0:nt
     U =  load(sprintf('results_%i.dat',i));
-    quiver3(U(:,1),U(:,2),U(:,3), U(:,4), U(:,5), U(:,6));
+    quiver3(U(:,1),U(:,2),U(:,3), U(:,5), U(:,6), U(:,7));
 end
 
-% plot(U(:,1), U(:,4));
+plot(U(:,1), U(:,4));
 
 % 
 % 
