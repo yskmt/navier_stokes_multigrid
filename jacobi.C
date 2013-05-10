@@ -82,7 +82,7 @@ void jacobi_sparse( cdouble tol,
 			}
 			U[i] = 1/T * (F[i]-S);
 		}
-
+		
 		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
 		// cout<<"i: "<<ct<<" Er: "<<Er<<endl;
 		ct++;

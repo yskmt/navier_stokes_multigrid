@@ -1,12 +1,43 @@
 #include "advection.h"
+#include "IO.h"
 
 // set up initial conditions
-void initial_conditoins()
+void initial_conditions( boost::multi_array<double, 3>& U,
+						 boost::multi_array<double, 3>& V,
+						 boost::multi_array<double, 3>& W,
+						 double* P,
+						 cuint nx, cuint ny, cuint nz )
 {
+	// set up U
+	for(int i=0; i<nx-1; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
+				U[i][j][k] = 1.0;
+			}
+		}
+	}
 
-	return;
+	// set up V
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny-1; j++){
+			for(int k=0; k<nz; k++){
+				V[i][j][k] = 1.0;
+			}
+		}
+	}
+
+	// set up W
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz-1; k++){
+				W[i][j][k] = 1.0;
+			}
+		}
+	}	
 	
+	return;
 }
+
 
 // treat nonlinear advection terms
 void advection( boost::multi_array<double, 3>& U,
@@ -14,26 +45,28 @@ void advection( boost::multi_array<double, 3>& U,
 				boost::multi_array<double, 3>& W,
 				cuint nx, cuint ny, cuint nz,
 				cdouble hx, cdouble hy, cdouble hz,
-				cdouble dt
+				cdouble dt,
+				cdouble bcs[][6]
 				)
-{
-	
-	// boundary values
-	double uB = 0.0; //bottom
-	double uT = 0.0; //top
-
+{	
 	// upwinding parameter
-	cdouble gamma =
-		min( 1.2*dt*max(max(max_3d_array(U), max_3d_array(V)), max_3d_array(W)),
-			 1.0);
+	// cdouble gamma =
+	// 	min( 1.2*dt*max(max(max_3d_array(U), max_3d_array(V)), max_3d_array(W)),
+	// 		 1.0);
 
 	// build matrix with boundary conditions
 	boost::multi_array<double, 3> Ue(boost::extents[nx+1][ny+2][nz+2]);
 	boost::multi_array<double, 3> Ve(boost::extents[nx+2][ny+1][nz+2]);
 	boost::multi_array<double, 3> We(boost::extents[nx+2][ny+2][nz+1]);
-	grid_matrix(Ue, nx, ny, nz, X_DIR, 0,0,0,0, uB, uT);
-	grid_matrix(Ve, nx, ny, nz, Y_DIR, 0,0,0,0, uB, uT);
-	grid_matrix(We, nx, ny, nz, Z_DIR, 0,0,0,0, uB, uT);
+	cout<<"grid"<<endl;
+	// grid_matrix(&U, &Ue, nx, ny, nz, X_DIR, bcs[0]);
+	grid_matrix(&V, &Ve, nx, ny, nz, Y_DIR, bcs[1]);
+	// grid_matrix(&W, &We, nx, ny, nz, Z_DIR, bcs[2]);
+
+	cout<<"out"<<endl;
+	char Ufile [] = "U.dat";
+	write_3d_data(Ue, Ufile);
+	cout<<"done"<<endl;
 	
 	// calculate UV, UW, VW defined at mid-edges
 	boost::multi_array<double, 3> UV(boost::extents[nx+1][ny+1][nz+2]);
@@ -85,29 +118,24 @@ void advection( boost::multi_array<double, 3>& U,
 
 // generate grid matrix
 // dir: direction of velocity: 0:x 1:y 2:z
-void grid_matrix( boost::multi_array<double, 3>& Ue,
+void grid_matrix( boost::multi_array<double, 3>* U,
+				  boost::multi_array<double, 3>* Ue,
 				  cuint nx, cuint ny, cuint nz,
 				  cuint dir,
-				  cdouble u0, // x0
-				  cdouble u1, // xl
-				  cdouble u2, // y0
-				  cdouble u3, // yl
-				  cdouble u4, // z0
-				  cdouble u5 ) //zl
-	
+				  cdouble* bc )
 {
 	double x_size, y_size, z_size;
 	
 	// u velocity
-	if(dir==0){
+	if(dir==X_DIR){
 		x_size=nx+1; y_size=ny+2; z_size=nz+2;
 	}
 	// v velocity
-	else if(dir==1){
+	else if(dir==Y_DIR){
 		x_size=nx+2; y_size=ny+1; z_size=nz+2;
 	}
 	// w velocity
-	else if(dir==2){
+	else if(dir==Z_DIR){
 		x_size=nx+2; y_size=ny+2; z_size=nz+1;
 	}
 	else{
@@ -116,80 +144,120 @@ void grid_matrix( boost::multi_array<double, 3>& Ue,
 	}
 	
 	// for cofficients u
-	if( dir==0){
+	if( dir==X_DIR){
+		// typedef boost::multi_array<double, 3>::index ind;
+		
+		// insert values
+		for(int i=1; i<x_size-1; ++i){
+			for(int j=1; j<y_size-1; ++j){
+				for(int k=1; k<z_size-1; ++k){
+					(*Ue)[i][j][k] = (*U)[i-1][j-1][k-1];
+					if(j==1) cout<<(*Ue)[i][j][k]<<endl;
+				}
+			}
+		}
+		
 		// account for boundary conditions
 		// x0, xl
+		cout<<"yes"<<endl;
+		for(int i=1; i<x_size-1; i++){
+			for(int k=1; k<z_size-1; k++){
+				cout<<(*Ue)[i][1][k]<<endl;
+			}
+		}
+		
 		for(int j=0; j<y_size; j++){
 			for(int k; k<z_size; k++){
-				Ue[0][j][k] = u0;
-				Ue[x_size-1][j][k] = u1;
+				(*Ue)[0][j][k] = bc[0];
+				(*Ue)[x_size-1][j][k] = bc[1];
 			}
 		}
 		// y0, yl
 		for(int i=0; i<x_size; i++){
 			for(int k; k<z_size; k++){
-				Ue[i][0][k] = 2*u2-Ue[i][1][k];
-				Ue[i][y_size-1][k] = 2*u3-Ue[i][y_size-2][k];
-			
+				(*Ue)[i][0][k] = 2*bc[2]-(*Ue)[i][1][k];
+				(*Ue)[i][y_size-1][k] = 2*bc[3]-(*Ue)[i][y_size-2][k];
 			}
 		}
 		// z0, zl
 		for(int i=0; i<x_size; i++){
 			for(int j; j<y_size; j++){
-				Ue[i][j][0] = 2*u4-Ue[i][j][1];
-				Ue[i][j][z_size-1] = 2*u5-Ue[i][j][z_size-2];
+				(*Ue)[i][j][0] = 2*bc[4]-(*Ue)[i][j][1];
+				(*Ue)[i][j][z_size-1] = 2*bc[5]-(*Ue)[i][j][z_size-2];
 			}
 		}
 	}
 
 	// for cofficients v
-	else if( dir==1 ){
+	else if( dir==Y_DIR ){
+		// insert values
+		for(int i=1; i<x_size-1; i++){
+			for(int j=1; j<y_size-1; j++){
+				for(int k=1; k<z_size-1; k++){
+					(*Ue)[i][j][k] = (*U)[i-1][j-1][k-1];
+				}
+			}
+		}
+		cout<<"done insert values"<<endl;
+		
 		// account for boundary conditions
 		// x0, xl
 		for(int j=0; j<y_size; j++){
 			for(int k; k<z_size; k++){
-				Ue[0][j][k] = 2*u0-Ue[1][j][k];
-				Ue[x_size-1][j][k] = 2*u1-Ue[x_size-2][j][k];
+				(*Ue)[0][j][k] = 2*bc[0]-(*Ue)[1][j][k];
+				(*Ue)[x_size-1][j][k] = 2*bc[1]-(*Ue)[x_size-2][j][k];
 			}
 		}
+
+		cout<<"bdc1"<<endl;
+		
 		// y0, yl
 		for(int i=0; i<x_size; i++){
 			for(int k; k<z_size; k++){
-				Ue[i][0][k] = u2;
-				Ue[i][y_size-1][k] = u3;
+				(*Ue)[i][0][k] = bc[2];
+				(*Ue)[i][y_size-1][k] = bc[3];
 			}
 		}
 		// z0, zl
 		for(int i=0; i<x_size; i++){
 			for(int j; j<y_size; j++){
-				Ue[i][j][0] = 2*u4-Ue[i][j][1];
-				Ue[i][j][z_size-1] = 2*u5-Ue[i][j][z_size-2];
+				(*Ue)[i][j][0] = 2*bc[4]-(*Ue)[i][j][1];
+				(*Ue)[i][j][z_size-1] = 2*bc[5]-(*Ue)[i][j][z_size-2];
 			}
 		}
 	}
 
 	// for cofficients w
-	else if( dir==2 ){
+	else if( dir==Z_DIR ){
+		// insert values
+		for(int i=1; i<x_size-1; i++){
+			for(int j=1; j<y_size-1; j++){
+				for(int k=1; k<z_size-1; k++){
+					(*Ue)[i][j][k] = (*U)[i-1][j-1][k-1];
+				}
+			}
+		}
+
 		// account for boundary conditions
 		// x0, xl
 		for(int j=0; j<y_size; j++){
 			for(int k; k<z_size; k++){
-				Ue[0][j][k] = 2*u0-Ue[1][j][k];
-				Ue[x_size-1][j][k] = 2*u1-Ue[x_size-2][j][k];
+				(*Ue)[0][j][k] = 2*bc[0]-(*Ue)[1][j][k];
+				(*Ue)[x_size-1][j][k] = 2*bc[1]-(*Ue)[x_size-2][j][k];
 			}
 		}
 		// y0, yl
 		for(int i=0; i<x_size; i++){
 			for(int k; k<z_size; k++){
-				Ue[i][0][k] = 2*u2-Ue[i][1][k];
-				Ue[i][y_size-1][k] = 2*u3-Ue[i][y_size-2][k];
+				(*Ue)[i][0][k] = 2*bc[2]-(*Ue)[i][1][k];
+				(*Ue)[i][y_size-1][k] = 2*bc[3]-(*Ue)[i][y_size-2][k];
 			}
 		}
 		// z0, zl
 		for(int i=0; i<x_size; i++){
 			for(int j; j<y_size; j++){
-				Ue[i][j][0] = u4;
-				Ue[i][j][z_size-1] = u5;
+				(*Ue)[i][j][0] = bc[4];
+				(*Ue)[i][j][z_size-1] = bc[5];
 			}
 		}
 	}
@@ -328,13 +396,6 @@ void average( const boost::multi_array<double, 3>& Ue,
 
 	
 	return;
-}
-
-// first order 
-void diff_1()
-{
-
-
 }
 
 // get maximum of the abs values of 3d array

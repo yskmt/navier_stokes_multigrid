@@ -5,6 +5,7 @@
 #include "v_cycle.h"
 #include "advection.h"
 #include "viscosity.h"
+#include "pressure.h"
 
 // number of threads
 uint nt;
@@ -13,8 +14,8 @@ int main( int argc, char** argv )
 {
 	// initialize constants
 	cdouble nu = 100; // kinetic viscosity (mu/rho)
-	double dt = 1e-2; //time step
-	cdouble tf = 4.0; // final time
+	double dt = 1.0; //time step
+	cdouble tf = 1.0; // final time
 	
 	// domain size
 	cdouble lx = 1.0; 
@@ -31,9 +32,9 @@ int main( int argc, char** argv )
 	
 	// number of gridpointts in each dimension
 	nt=1;
-	uint nx=5;
-	uint ny=5;
-	uint nz=5; // problem size (n_dof=n_size^3)
+	uint nx=10;
+	uint ny=10;
+	uint nz=10; // problem size (n_dof=n_size^3)
 	uint max_level=0; // maximum v-cycle level
 	if(argc>5){
 		nt = atoi(argv[1]);
@@ -52,7 +53,10 @@ int main( int argc, char** argv )
 	// should be 2^n due to periodic domain
 
 	cuint n_dof = nx*ny*nz;
-
+	cuint n_u_dof = (nx-1)*ny*nz;
+	cuint n_v_dof = (nx)*(ny-1)*nz;
+	cuint n_w_dof = (nx)*ny*(nz-1);
+	
 	// number of time steps
 	cuint nt = floor(tf/dt);
 	// corrected time step size
@@ -68,33 +72,46 @@ int main( int argc, char** argv )
 	cdouble hy2i = 1.0/(hy*hy);
 	cdouble hz2i = 1.0/(hz*hz);
 
-	// set up initial conditions
 	// interior values
 	boost::multi_array<double, 3> U(boost::extents[nx-1][ny][nz]);
 	boost::multi_array<double, 3> V(boost::extents[nx][ny-1][nz]);
 	boost::multi_array<double, 3> W(boost::extents[nx][ny][nz-1]);
+	double* P = new double[n_dof];
+
+	// set up initial conditions
+	initial_conditions(U, V, W, P, nx, ny, nz);
 	
-	// treat nonlinear (advection) terms
-	advection(U,V,W, nx,ny,nz, hx, hy, hz, dt);
-
-	cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-
 	// for jacobi method
 	cdouble tol = 0.0001;
 	cuint max_iteration = 10000;
 	cuint pre_smooth_iteration = 10;
 	
-	// implicitly solve viscosity terms
-	viscosity( U, V, W, nx, ny, nz, hx, hy, hz,
-			   hx2i, hy2i, hz2i,
-			   dt, nu, bcs,
-			   tol, max_iteration );
+	// boundary conditions
+	cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 	
-	// implicit viscosity terms
-	// viscosity();
+	for(int ts=0; ts<nt; ts++){
+		cout<<"loop :"<<ts<<endl;
+		
+		// treat nonlinear (advection) terms
+		advection(U,V,W, nx,ny,nz, hx, hy, hz, dt, bcs);
 	
-	
+		// implicitly solve viscosity terms
+		double* Uss = new double[n_u_dof];
+		double* Vss = new double[n_v_dof];
+		double* Wss = new double[n_w_dof];
+		viscosity( U, V, W, Uss, Vss, Wss, nx, ny, nz, hx, hy, hz,
+				   hx2i, hy2i, hz2i,
+				   dt, nu, bcs,
+				   tol, max_iteration );
+		
+		// solve for pressure and update
+		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
+				  hx2i, hy2i, hz2i, tol, max_iteration );
 
+		// write out the results
+		write_results( U, V, W, P, n_dof, nx, ny, nz, hx, hy, hz, ts, bcs);
+
+	}
 	/*
 	double* F;
 	double Er = tol*10;

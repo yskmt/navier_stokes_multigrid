@@ -5,6 +5,7 @@
 void viscosity(  boost::multi_array<double, 3>& U,
 				 boost::multi_array<double, 3>& V,
 				 boost::multi_array<double, 3>& W,
+				 double* Uss, double* Vss, double* Wss,
 				 cuint nx, cuint ny, cuint nz,
 				 cdouble hx, cdouble hy, cdouble hz,
 				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
@@ -14,38 +15,37 @@ void viscosity(  boost::multi_array<double, 3>& U,
 {
 	double Er;
 	
-// 	// Lu
-// 	cuint n_u_dof = (nx-1)*ny*nz;
-// 	vector<tuple <uint, uint, double> > Lu_sp;
-// 	vector<double> Lu_val(Lu_sp.size(),0.0);
-// 	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
-// 	vector<uint> Lu_row_ptr(1,0);		
-// 	double* Fu = new double[n_u_dof];
-// 	// set load vector
-// 	viscosity_load_vector(Fu, U);
-// 	// sparse viscosity matrix and bc modification
-// 	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
-// 							 Fu, nx-1, ny, nz, hx, hy, hz,
-// 							 hx2i, hy2i, hz2i, dt, nu, 
-// 							 bcs[0], X_DIR );
-// 	// now solve Lu\Fu
-// 	// construct solution vector
-// 	double* Uss = new double[n_u_dof];
-// 	double* Uss_tmp = new double[n_u_dof];
-// 	// initial guess
-// #pragma omp parallel for shared(Uss, Uss_tmp) num_threads(nt)
-// 	for(int n=0; n<n_u_dof; n++){
-// 	    Uss[n] = 0.0;
-// 	    Uss_tmp[n] = 0.0;
-//     }
-// 	// residual and error
-// 	double* Ru = new double[n_u_dof];
-// 	Er = tol*10;
-// 	// jacobi iteration
-// 	jacobi_sparse(tol, max_iteration, n_u_dof, Uss, Uss_tmp,
-// 				  Lu_val, Lu_col_ind, Lu_row_ptr, Fu, Er, Ru);
+	// Lu
+	cuint n_u_dof = (nx-1)*ny*nz;
+	vector<tuple <uint, uint, double> > Lu_sp;
+	vector<double> Lu_val(Lu_sp.size(),0.0);
+	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
+	vector<uint> Lu_row_ptr(1,0);		
+	double* Fu = new double[n_u_dof];
+	// set load vector
+	viscosity_load_vector(Fu, U);
+	// sparse viscosity matrix and bc modification
+	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
+							 Fu, nx-1, ny, nz, hx, hy, hz,
+							 hx2i, hy2i, hz2i, dt, nu, 
+							 bcs[0], X_DIR );
+	// now solve Lu\Fu
+	// construct solution vector
+	double* Uss_tmp = new double[n_u_dof];
+	// initial guess
+#pragma omp parallel for shared(Uss, Uss_tmp) num_threads(nt)
+	for(int n=0; n<n_u_dof; n++){
+	    Uss[n] = 0.0;
+	    Uss_tmp[n] = 0.0;
+    }
+	// residual and error
+	double* Ru = new double[n_u_dof];
+	Er = tol*10;
+	// jacobi iteration
+	jacobi_sparse(tol, max_iteration, n_u_dof, Uss, Uss_tmp,
+				  Lu_val, Lu_col_ind, Lu_row_ptr, Fu, Er, Ru);
 			
-	// Lv
+	// lv
 	cuint n_v_dof = (nx)*(ny-1)*nz;
 	vector<tuple <uint, uint, double> > Lv_sp;
 	vector<double> Lv_val(Lv_sp.size(),0.0);
@@ -61,14 +61,13 @@ void viscosity(  boost::multi_array<double, 3>& U,
 							 bcs[1], Y_DIR );
 	// now solve Lv\Fv
 	// construct solution vector
-	double* Vss = new double[n_v_dof];
+	// double* Vss = new double[n_v_dof];
 	double* Vss_tmp = new double[n_v_dof];
 	// initial guess
 #pragma omp parallel for shared(Vss, Vss_tmp) num_threads(nt)
 	for(int n=0; n<n_v_dof; n++){
 	    Vss[n] = 0.0;
 	    Vss_tmp[n] = 0.0;
-		cout<<"Fv "<<Fv[n]<<endl;
     }
 	// residual and error
 	double* Rv = new double[n_v_dof];
@@ -93,7 +92,7 @@ void viscosity(  boost::multi_array<double, 3>& U,
 							 bcs[2], Z_DIR );
 	// now solve Lw\Fw
 	// construct solution vector
-	double* Wss = new double[n_w_dof];
+	// double* Wss = new double[n_w_dof];
 	double* Wss_tmp = new double[n_w_dof];
 	// initial guess
 #pragma omp parallel for shared(Wss, Wss_tmp) num_threads(nt)
@@ -115,7 +114,6 @@ void viscosity(  boost::multi_array<double, 3>& U,
 
 	
 }
-
 
 // sparse viscosity matrix
 void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
@@ -194,6 +192,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 					}
 						
 				}
+
 				sparse_add(M[myrank], t_111, t_111, -2*hy2i);
 				
 				if(j+1<ny)
@@ -237,7 +236,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	} // end parallel region		
 
 	// merge and sort
-	cout<<"sorting..."<<endl;
+	// cout<<"sorting..."<<endl;
 	for(int i=1; i<nt; i++)
 		M[0].insert( M[0].end(), M[i].begin(), M[i].end() );
 	// sort(M[0].begin(), M[0].end(), comp_pairs);
@@ -245,7 +244,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	tmp.resize(M[0].size());	
 	mergesort(&M[0][0], nt, M[0].size(), &tmp[0] );
 
-	cout<<"sorting done"<<endl;
+	// cout<<"sorting done"<<endl;
 	
 	// consolidate
 	L_sp.push_back(M[0][0]);
@@ -262,7 +261,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	}
    
 	// convert to CSR format
-	cout<<"converting to CSR format"<<endl;
+	// cout<<"converting to CSR format"<<endl;
 	val.resize(L_sp.size(),0.0);
 	col_ind.resize(L_sp.size(), 0);
 	
@@ -277,7 +276,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	}
 	row_ptr.push_back(L_sp.size());
 
-	cout<<"done"<<endl;
+	// cout<<"done"<<endl;
 	
 	// output to file for testing purpose
 	char file_name[100];

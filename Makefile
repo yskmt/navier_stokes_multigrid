@@ -4,7 +4,7 @@
 CC=g++
 CFLAGS=-fopenmp  -std=c++11
 LDFLAGS=-fopenmp  -std=c++11
-SOURCES=main.C assemble.C  IO.C  jacobi.C utils.C  v_cycle.C advection.C viscosity.C msort.C
+SOURCES=main.C assemble.C  IO.C  jacobi.C utils.C  v_cycle.C advection.C viscosity.C msort.C pressure.C
 OBJ=$(SOURCES:.C=.o)
 EXE=multigrid
 
@@ -19,6 +19,8 @@ $(EXE): $(OBJ)
 jacobi.o:jacobi.h
 main.o:jacobi.h assemble.h utils.h IO.h v_cycle.h advection.h viscosity.h
 viscosity.o: viscosity.h
+pressure.o: pressure.h
+IO.o: IO.h advection.h
 
 run:
 	@ export OMP_NUM_THREADS=1

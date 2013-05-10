@@ -6,26 +6,30 @@
 
 using namespace std;
 
+// set up initial conditions
+void initial_conditions( boost::multi_array<double, 3>& U,
+						 boost::multi_array<double, 3>& V,
+						 boost::multi_array<double, 3>& W,
+						 double* P,
+						 cuint nx, cuint ny, cuint nz );
+
 // treat nonlinear advection terms
 void advection( boost::multi_array<double, 3>& U,
 				boost::multi_array<double, 3>& V,
 				boost::multi_array<double, 3>& W,
 				cuint nx, cuint ny, cuint nz,
 				cdouble hx, cdouble hy, cdouble hz,
-				cdouble dt
+				cdouble dt,
+				cdouble bcs[][6]
 				);
 
 // generate grid matrix
 // dir: direction of velocity: 0:x 1:y 2:z
-void grid_matrix( boost::multi_array<double, 3>& Ue,
+void grid_matrix( boost::multi_array<double, 3>* U,
+				  boost::multi_array<double, 3>* Ue,
 				  cuint nx, cuint ny, cuint nz,
 				  cuint dir,
-				  cdouble u0, // x0
-				  cdouble u1, // xl
-				  cdouble u2, // y0
-				  cdouble u3, // yl
-				  cdouble u4, // z0
-				  cdouble u5 ); //zl
+				  cdouble* bc ); // x0 xl y0 yl z0 zl
 
 // average values in whatever direction
 void average( const boost::multi_array<double, 3>& Ue,
