@@ -21,12 +21,12 @@ void viscosity(  double* U,
 	vector<double> Lu_val(Lu_sp.size(),0.0);
 	vector<uint> Lu_col_ind(Lu_sp.size(), 0);
 	vector<uint> Lu_row_ptr(1,0);		
-	double* Fu = new double[n_u_dof];
+	// double* Fu = new double[n_u_dof];
 	// set load vector
-	viscosity_load_vector(Fu, U, nx-1, ny, nz);
+	// viscosity_load_vector(Fu, U, nx-1, ny, nz);
 	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
-							 Fu, nx-1, ny, nz, hx, hy, hz,
+							 U, nx-1, ny, nz, hx, hy, hz,
 							 hx2i, hy2i, hz2i, dt, nu, 
 							 bcs[0], X_DIR );
 	// now solve Lu\Fu
@@ -43,7 +43,7 @@ void viscosity(  double* U,
 	Er = tol*10;
 	// jacobi iteration
 	jacobi_sparse(tol, max_iteration, n_u_dof, Uss, Uss_tmp,
-				  Lu_val, Lu_col_ind, Lu_row_ptr, Fu, Er, Ru);
+				  Lu_val, Lu_col_ind, Lu_row_ptr, U, Er, Ru);
 			
 	// lv
 	cuint n_v_dof = (nx)*(ny-1)*nz;
@@ -51,12 +51,12 @@ void viscosity(  double* U,
 	vector<double> Lv_val(Lv_sp.size(),0.0);
 	vector<uint> Lv_col_ind(Lv_sp.size(), 0);
 	vector<uint> Lv_row_ptr(1,0);		
-	double* Fv = new double[n_v_dof];
+	// double* Fv = new double[n_v_dof];
 	// set load vector
-	viscosity_load_vector(Fv, V, nx, ny-1, nz);
+	// viscosity_load_vector(Fv, V, nx, ny-1, nz);
    	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lv_sp, Lv_val, Lv_col_ind, Lv_row_ptr,
-							 Fv, nx, ny-1, nz, hx, hy, hz,
+							 V, nx, ny-1, nz, hx, hy, hz,
 							 hx2i, hy2i, hz2i, dt, nu, 
 							 bcs[1], Y_DIR );
 	// now solve Lv\Fv
@@ -74,7 +74,7 @@ void viscosity(  double* U,
 	Er = tol*10;
 	// jacobi iteration
 	jacobi_sparse(tol, max_iteration, n_v_dof, Vss, Vss_tmp,
-				  Lv_val, Lv_col_ind, Lv_row_ptr, Fv, Er, Rv);
+				  Lv_val, Lv_col_ind, Lv_row_ptr, V, Er, Rv);
 
 	// Lw
 	cuint n_w_dof = (nx)*(ny)*(nz-1);
@@ -82,12 +82,12 @@ void viscosity(  double* U,
 	vector<double> Lw_val(Lw_sp.size(),0.0);
 	vector<uint> Lw_col_ind(Lw_sp.size(), 0);
 	vector<uint> Lw_row_ptr(1,0);		
-	double* Fw = new double[n_w_dof];
+	// double* Fw = new double[n_w_dof];
    	// set load vector
-	viscosity_load_vector(Fw, W, nx, ny, nz-1);
+	// viscosity_load_vector(Fw, W, nx, ny, nz-1);
 	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lw_sp, Lw_val, Lw_col_ind, Lw_row_ptr,
-							 Fw, nx, ny, nz-1, hx, hy, hz,
+							 W, nx, ny, nz-1, hx, hy, hz,
 							 hx2i, hy2i, hz2i, dt, nu, 
 							 bcs[2], Z_DIR );
 	// now solve Lw\Fw
@@ -105,13 +105,16 @@ void viscosity(  double* U,
 	Er = tol*10;
 	// jacobi iteration
 	jacobi_sparse(tol, max_iteration, n_w_dof, Wss, Wss_tmp,
-				  Lw_val, Lw_col_ind, Lw_row_ptr, Fw, Er, Rw);
+				  Lw_val, Lw_col_ind, Lw_row_ptr, W, Er, Rw);
 
 	
 	// v_cycle( n_u_dof, nx-1, ny, nz, hx2i, hy2i, hz2i,
 	// 		 tol, max_iteration, pre_smooth_iteration,
 	// 		 lx, ly, lz, 0, max_level, Fu, Er);
 
+	// cleanup
+	delete[] Uss_tmp, Vss_tmp, Wss_tmp;
+	delete[] Ru, Rv, Rw;
 	
 }
 
@@ -244,8 +247,6 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	tmp.resize(M[0].size());	
 	mergesort(&M[0][0], nt, M[0].size(), &tmp[0] );
 
-	// cout<<"sorting done"<<endl;
-	
 	// consolidate
 	L_sp.push_back(M[0][0]);
 	uint ct=0;
@@ -297,15 +298,10 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 void viscosity_load_vector( double* F, double* U,
 							cuint nx, cuint ny, cuint nz)
 {
-	// boost::multi_array_types::size_type const* sizes = U.shape();
-	// cuint nx = sizes[0];
-	// cuint ny = sizes[1];
-	// cuint nz = sizes[2];
-
+	uint t;
 	for(int i=0; i<(nx); i++){
 		for(int j=0; j<(ny); j++){
 			for(int k=0; k<(nz); k++){
-				uint t;
 				three_d_to_one_d(i,  j,  k, nx,ny, t);
 
 				F[t] = U[t];

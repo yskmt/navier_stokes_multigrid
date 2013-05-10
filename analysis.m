@@ -1,13 +1,14 @@
 clear all
 close all
 
-nt = 10;
+nt = 0;
 
 for i=0:nt
     U =  load(sprintf('results_%i.dat',i));
-    pause
     quiver3(U(:,1),U(:,2),U(:,3), U(:,4), U(:,5), U(:,6));
 end
+
+% plot(U(:,1), U(:,4));
 
 % 
 % 

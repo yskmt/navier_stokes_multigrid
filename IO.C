@@ -168,7 +168,7 @@ int write_results(  double* U,
 		file_out<<P[n]<<endl;
 	}
 
-	file_out<<"VECTORS U float"<<endl;
+	file_out<<"VECTORS velocity float"<<endl;
 	for(int n=0; n<n_dof; n++){
 		// uint i,j,k;
 		// one_d_to_three_d(n, nx, ny, i,j,k);
@@ -184,8 +184,9 @@ int write_results(  double* U,
 	sprintf(file_name, "results_%i.dat", ts);
 	file_out.open(file_name);
 	for(int n=0; n<n_dof; n++){
-		// one_d_to_three_d( n, nx, ny, i, j, k);
-		file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "<<P[n]
+		one_d_to_three_d( n, nx, ny, i, j, k);
+		file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "
+				<<P[n]<<" "
 				<<Uc[n]<<" "
 				<<Vc[n]<<" "
 				<<Wc[n]<<endl;
@@ -201,7 +202,6 @@ int write_3d_data( double* U,
 {
 	// output files for matlab
 	ofstream file_out;
-	cout<<"open"<<endl;
 	file_out.open(file_name);
 
 	if(!file_out.is_open()){

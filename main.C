@@ -9,6 +9,46 @@
 
 // number of threads
 uint nt;
+// set up initial conditions
+void initial_conditions( double* U,
+						 double* V,
+						 double* W,
+						 double* P,
+						 cuint nx, cuint ny, cuint nz )
+{
+	uint t;
+	// set up U
+	for(int i=0; i<nx-1; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
+				three_d_to_one_d(i,j,k, nx-1, ny, t);
+				U[t] = 0.0;
+			}
+		}
+	}
+
+	// set up V
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny-1; j++){
+			for(int k=0; k<nz; k++){
+				three_d_to_one_d(i,j,k, nx, ny-1, t);
+				V[t] = 0.0;
+			}
+		}
+	}
+
+	// set up W
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz-1; k++){
+				three_d_to_one_d(i,j,k, nx, ny, t);
+				W[t] = 0.0;
+			}
+		}
+	}	
+	
+	return;
+}
 
 int main( int argc, char** argv )
 {
@@ -83,11 +123,13 @@ int main( int argc, char** argv )
 	
 	// for jacobi method
 	cdouble tol = 0.0001;
-	cuint max_iteration = 10000;
+	cuint max_iteration = 100000;
 	cuint pre_smooth_iteration = 10;
 	
 	// boundary conditions
-	cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	// x0 xl y0 yl z0 zl
+	// cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = {{1,1,1,1,1,1.1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 	
 	for(int ts=0; ts<nt; ts++){
 		cout<<"loop :"<<ts<<endl;
@@ -103,6 +145,17 @@ int main( int argc, char** argv )
 				   hx2i, hy2i, hz2i,
 				   dt, nu, bcs,
 				   tol, max_iteration );
+		for(int i=0; i<n_u_dof; i++)
+			// cout<<Uss[i]<<endl;
+			Uss[i] = -Uss[i];
+		for(int i=0; i<n_v_dof; i++)
+			// cout<<Vss[i]<<endl;
+			Vss[i] = -Vss[i];
+		cout<<"Wss"<<endl;
+		for(int i=0; i<n_w_dof; i++)
+			// cout<<Wss[i]<<endl;
+			Wss[i] = -Wss[i];
+
 		
 		// solve for pressure and update
 		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
@@ -173,3 +226,4 @@ int main( int argc, char** argv )
 	
 	return 0;
 }
+

@@ -6,14 +6,6 @@
 
 using namespace std;
 
-// set up initial conditions
-void initial_conditions( double* U,
-						 double* V,
-						 double* W,
-						 double* P,
-						 cuint nx, cuint ny, cuint nz );
-
-
 // treat nonlinear advection terms
 void advection( double* U,
 				double* V,

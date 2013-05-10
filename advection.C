@@ -1,47 +1,6 @@
 #include "advection.h"
 #include "IO.h"
 
-// set up initial conditions
-void initial_conditions( double* U,
-						 double* V,
-						 double* W,
-						 double* P,
-						 cuint nx, cuint ny, cuint nz )
-{
-	uint t;
-	// set up U
-	for(int i=0; i<nx-1; i++){
-		for(int j=0; j<ny; j++){
-			for(int k=0; k<nz; k++){
-				three_d_to_one_d(i,j,k, nx-1, ny, t);
-				U[t] = 0.0;
-			}
-		}
-	}
-
-	// set up V
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny-1; j++){
-			for(int k=0; k<nz; k++){
-				three_d_to_one_d(i,j,k, nx, ny-1, t);
-				V[t] = 0.0;
-			}
-		}
-	}
-
-	// set up W
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny; j++){
-			for(int k=0; k<nz-1; k++){
-				three_d_to_one_d(i,j,k, nx, ny, t);
-				W[t] = 0.0;
-			}
-		}
-	}	
-	
-	return;
-}
-
 // treat nonlinear advection terms
 void advection( double* U,
 				double* V,
@@ -67,24 +26,25 @@ void advection( double* U,
 
 	// char Ufile [] = "U.dat";
 	// write_3d_data(Ue, nx+1, ny+2, nz+2, Ufile);
-
+	// char Vfile [] = "V.dat";
+	// write_3d_data(Ve, nx+2, ny+1, nz+2, Vfile);
+	// char Wfile [] = "W.dat";
+	// write_3d_data(We, nx+2, ny+2, nz+1, Wfile);
+	
 	// calculate UV, UW, VW defined at mid-edges
 	double* UV = new double[(nx+1)*(ny+1)*(nz+2)];
 	double* UW = new double[(nx+1)*(ny+2)*(nz+1)];
 	double* VW = new double[(nx+2)*(ny+1)*(nz+1)];
-	// boost::multi_array<double, 3> UV(boost::extents[nx+1][ny+1][nz+2]);
-	// boost::multi_array<double, 3> UW(boost::extents[nx+1][ny+2][nz+1]);
-	// boost::multi_array<double, 3> VW(boost::extents[nx+2][ny+1][nz+1]);
 	calculate_edge_values(Ue, Ve, We, UV, UW, VW, nx, ny, nz);
 		
 	// calculate UV_y, UW_z, VU_x, VW_z, WU_x, WV_y
 	// defined at corresponding points
-	double*  UV_y = new double [(nx+1)*(ny)*(nz+2)];
-	double*  UW_z = new double  [(nx+1)*(ny+2)*(nz)];
-	double*  VU_x = new double  [(nx)*(ny+1)*(nz+2)];
-	double*  VW_z = new double  [(nx+2)*(ny+1)*(nz)];
-	double*  WU_x = new double  [(nx)*(ny+2)*(nz+1)];
-	double*  WV_y = new double  [(nx+2)*(ny)*(nz+1)];
+	double*  UV_y = new double[(nx+1)*(ny)*(nz+2)];
+	double*  UW_z = new double[(nx+1)*(ny+2)*(nz)];
+	double*  VU_x = new double[(nx)*(ny+1)*(nz+2)];
+	double*  VW_z = new double[(nx+2)*(ny+1)*(nz)];
+	double*  WU_x = new double[(nx)*(ny+2)*(nz+1)];
+	double*  WV_y = new double[(nx+2)*(ny)*(nz+1)];
 	staggered_first_difference( UV, UV_y, nx+1, ny+1, nz+2,
 								nx+1, ny, nz+2, hy, Y_DIR );
 	staggered_first_difference( UW, UW_z, nx+1, ny+2, nz+1,
@@ -95,8 +55,8 @@ void advection( double* U,
 								nx+2, ny+1, nz, hz, Z_DIR );
 	staggered_first_difference( UW, WU_x, nx+1, ny+2, nz+1,
 								nx, ny+2, nz+1, hx, X_DIR );
-	staggered_first_difference( VW, WV_y, hy, nx+2, ny+1, nz+1,
-								nx+2, ny, nz+1, Y_DIR );
+	staggered_first_difference( VW, WV_y, nx+2, ny+1, nz+1,
+								nx+2, ny, nz+1, hy, Y_DIR );
 
 	// get U, V, W defined at cell centers
 	double* U2c = new double[(nx)*(ny+2)*(nz+2)];
@@ -124,6 +84,13 @@ void advection( double* U,
 						   UV_y, UW_z, VU_x, VW_z, WU_x, WV_y,
 						   nx, ny, nz,
 						   dt );
+
+	// cleanup
+	delete[] Ue, Ve, We;
+	delete[] UV, UW, VW;
+	delete[] UV_y, UW_z, VU_x, VW_z, WU_x, WV_y;
+	delete[] U2c, V2c, W2c;
+	delete[] U2_x, V2_y, W2_z;
 	
 	return;
 }
@@ -149,14 +116,12 @@ void grid_matrix( double* U,
 				   || k==0 || k==nze-1)
 					Ue[t] = 0.0;
 				else{
-					double t1;
-					three_d_to_one_d(i-1,j-1,k-1, nx, ny, t);
-					Ue[t] = U[t];
+					three_d_to_one_d(i-1,j-1,k-1, nx, ny, t1);
+					Ue[t] = U[t1];
 				}
 			}
 		}
 	}
-
 	
 	// for cofficients u
 	if( dir==X_DIR){
@@ -194,6 +159,7 @@ void grid_matrix( double* U,
 				Ue[t0] = 2*bc[5]-Ue[t1];
 			}
 		}
+		
 	}
 
 	// for cofficients v
@@ -289,17 +255,18 @@ void grid_matrix( double* U,
 // 6: x-direction and square
 // 7: y-direction and square
 // 8: z-direction and square
-void average( const double* Ue,
-			  double* Ua,
+void average( const double* Ue, // raw value
+			  double* Ua, // averaged value
 			  cuint nxe, cuint nye, cuint nze,
 			  cuint nxa, cuint nya, cuint nza,
 			  cuint dir )
 {
 	uint ta, te1, te2;
-	
-	if(dir==0){
+
+	// x-average
+	if(dir==X_DIR){
 		// interpolate values by averaging
-		for(int i=0; i<(nxa-1); i++){
+		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
@@ -311,10 +278,11 @@ void average( const double* Ue,
 		}
 	}
 
-	else if(dir==1){
+	// y-average
+	else if(dir==Y_DIR){
 		// interpolate values by averaging
 		for(int i=0; i<(nxa); i++){
-			for(int j=0; j<(nya-1); j++){
+			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
 					three_d_to_one_d(i,j+1,k, nxe, nye, te1);
@@ -324,12 +292,13 @@ void average( const double* Ue,
 			}
 		}
 	}
-	
-	else if(dir==2){
+
+	// z-average
+	else if(dir==Z_DIR){
 		// interpolate values by averaging
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
-				for(int k=0; k<(nza-1); k++){
+				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
 					three_d_to_one_d(i,j,k+1, nxe, nye, te1);
 					three_d_to_one_d(i,j,k, nxe, nye, te2);
@@ -379,9 +348,9 @@ void average( const double* Ue,
 	// }
 
 	// x-direction and square
-	else if(dir==6){
+	else if(dir==X2_DIR){
 		// interpolate values by averaging
-		for(int i=0; i<(nxa-1); i++){
+		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
@@ -395,10 +364,10 @@ void average( const double* Ue,
 	}
 
 	// y-direction and square
-	else if(dir==7){
+	else if(dir==Y2_DIR){
 		// interpolate values by averaging
 		for(int i=0; i<(nxa); i++){
-			for(int j=0; j<(nya-1); j++){
+			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
 					three_d_to_one_d(i,j+1,k, nxe, nye, te1);
@@ -411,11 +380,11 @@ void average( const double* Ue,
 	}
 
 	// z-direction and square
-	if(dir==8){
+	if(dir==Z2_DIR){
 		// interpolate values by averaging
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
-				for(int k=0; k<(nza-1); k++){
+				for(int k=0; k<(nza); k++){
 					three_d_to_one_d(i,j,k, nxa, nya, ta);
 					three_d_to_one_d(i,j,k+1, nxe, nye, te1);
 					three_d_to_one_d(i,j,k, nxe, nye, te2);
@@ -466,7 +435,6 @@ void staggered_first_difference( const double* UV,
 	uint t1, t2, t3;
 	// difference in x-direction
 	if( dir==X_DIR){
-		// boost::multi_array<double, 3> UV_x(boost::extents[nx-1][ny][nz]);
 		for(int i=0; i<nx-1; i++){
 			for(int j=0; j<ny; j++){
 				for(int k=0; k<nz; k++){
@@ -498,7 +466,6 @@ void staggered_first_difference( const double* UV,
 
 	// difference in z-direction
 	if( dir==Z_DIR ){
-		// boost::multi_array<double, 3> UV_z(boost::extents[nx][ny][nz-1]);
 		for(int i=0; i<nx; i++){
 			for(int j=0; j<ny; j++){
 				for(int k=0; k<nz-1; k++){
@@ -616,37 +583,20 @@ void calculate_edge_values( double* Ue,
 							double* VW,
 							cuint nx, cuint ny, cuint nz)
 {
-	double* Uay = new double [(nx+1)*(ny+1)*(nz+2)];
-	double* Vax = new double [(nx+1)*(ny+1)*(nz+2)];
-	double* Uaz = new double [(nx+1)*(ny+2)*(nz+1)];
-	double* Wax = new double [(nx+1)*(ny+2)*(nz+1)];
-
+	// average each value
+	double* Uay = new double[(nx+1)*(ny+1)*(nz+2)];
+	double* Vax = new double[(nx+1)*(ny+1)*(nz+2)];
+	double* Uaz = new double[(nx+1)*(ny+2)*(nz+1)];
+	double* Wax = new double[(nx+1)*(ny+2)*(nz+1)];
+	double* Vaz = new double[(nx+2)*(ny+1)*(nz+1)];
+	double* Way = new double[(nx+2)*(ny+1)*(nz+1)];
+	
 	average(Ue, Uay, nx+1, ny+2, nz+2, nx+1, ny+1, nz+2, Y_DIR);
 	average(Ve, Vax, nx+2, ny+1, nz+2, nx+1, ny+1, nz+2, X_DIR);
 	average(Ue, Uaz, nx+1, ny+2, nz+2, nx+1, ny+2, nz+1, Z_DIR);
 	average(We, Wax, nx+2, ny+2, nz+1, nx+1, ny+2, nz+1, X_DIR);
-
-	// boost::multi_array<double, 3> Va_x(boost::extents[nx+1][ny+1][nz+2]);
-	// boost::multi_array<double, 3> Ua_y(boost::extents[nx+1][ny+1][nz+2]);
-	double* Vaz = new double[(nx+2)*(ny+1)*(nz+1)];
-	double* Way = new double[(nx+2)*(ny+1)*(nz+1)];
-   	// average(Ve, Va_x, X_DIR);
-	// average(Ue, Ua_y, Y_DIR);
 	average(Ve, Vaz, nx+2, ny+1, nz+2, nx+2, ny+1, nz+1, Z_DIR);
 	average(We, Way, nx+2, ny+2, nz+1, nx+2, ny+1, nz+1, Y_DIR);
-	
-	// boost::multi_array<double, 3> Wa_x(boost::extents[nx+1][ny+2][nz+1]);
-	// boost::multi_array<double, 3> Ua_z(boost::extents[nx+1][ny+2][nz+1]);
-	// boost::multi_array<double, 3> Wa_y(boost::extents[nx+2][ny+1][nz+1]);
-	// boost::multi_array<double, 3> Va_z(boost::extents[nx+2][ny+1][nz+1]);
-	// average(We, Wa_x, X_DIR);
-	// average(Ue, Ua_z, Z_DIR);
-	// average(We, Wa_y, Y_DIR);
-	// average(Ve, Va_z, Z_DIR);
-
-	// double* UV = new double[(nx+1)*(ny+1)*(nz+2)];
-	// double* UW = new double[(nx+1)*(ny+2)*(nz+1)];
-	// double* VW = new double[(nx+2)*(ny+1)*(nz+1)];
 
 	uint t;
 	
@@ -677,6 +627,9 @@ void calculate_edge_values( double* Ue,
 		}
 	}
 
+	//cleanup
+	delete[] Uay, Vax, Uaz, Wax, Vaz, Way;
+	
 	return;
 
 }
