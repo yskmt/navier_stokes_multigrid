@@ -2,9 +2,9 @@
 
 
 // implicitly solve viscosity
-void viscosity(  boost::multi_array<double, 3>& U,
-				 boost::multi_array<double, 3>& V,
-				 boost::multi_array<double, 3>& W,
+void viscosity(  double* U,
+				 double* V,
+				 double* W,
 				 double* Uss, double* Vss, double* Wss,
 				 cuint nx, cuint ny, cuint nz,
 				 cdouble hx, cdouble hy, cdouble hz,
@@ -23,7 +23,7 @@ void viscosity(  boost::multi_array<double, 3>& U,
 	vector<uint> Lu_row_ptr(1,0);		
 	double* Fu = new double[n_u_dof];
 	// set load vector
-	viscosity_load_vector(Fu, U);
+	viscosity_load_vector(Fu, U, nx-1, ny, nz);
 	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lu_sp, Lu_val, Lu_col_ind, Lu_row_ptr,
 							 Fu, nx-1, ny, nz, hx, hy, hz,
@@ -53,7 +53,7 @@ void viscosity(  boost::multi_array<double, 3>& U,
 	vector<uint> Lv_row_ptr(1,0);		
 	double* Fv = new double[n_v_dof];
 	// set load vector
-	viscosity_load_vector(Fv, V);
+	viscosity_load_vector(Fv, V, nx, ny-1, nz);
    	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lv_sp, Lv_val, Lv_col_ind, Lv_row_ptr,
 							 Fv, nx, ny-1, nz, hx, hy, hz,
@@ -84,7 +84,7 @@ void viscosity(  boost::multi_array<double, 3>& U,
 	vector<uint> Lw_row_ptr(1,0);		
 	double* Fw = new double[n_w_dof];
    	// set load vector
-	viscosity_load_vector(Fw, W);
+	viscosity_load_vector(Fw, W, nx, ny, nz-1);
 	// sparse viscosity matrix and bc modification
 	viscosity_matrix_sparse( Lw_sp, Lw_val, Lw_col_ind, Lw_row_ptr,
 							 Fw, nx, ny, nz-1, hx, hy, hz,
@@ -294,12 +294,13 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 }
 
 // set load vector for implicit viscous solve
-void viscosity_load_vector( double* F,  boost::multi_array<double, 3>& U)
+void viscosity_load_vector( double* F, double* U,
+							cuint nx, cuint ny, cuint nz)
 {
-	boost::multi_array_types::size_type const* sizes = U.shape();
-	cuint nx = sizes[0];
-	cuint ny = sizes[1];
-	cuint nz = sizes[2];
+	// boost::multi_array_types::size_type const* sizes = U.shape();
+	// cuint nx = sizes[0];
+	// cuint ny = sizes[1];
+	// cuint nz = sizes[2];
 
 	for(int i=0; i<(nx); i++){
 		for(int j=0; j<(ny); j++){
@@ -307,7 +308,7 @@ void viscosity_load_vector( double* F,  boost::multi_array<double, 3>& U)
 				uint t;
 				three_d_to_one_d(i,  j,  k, nx,ny, t);
 
-				F[t] = U[i][j][k];
+				F[t] = U[t];
 			}
 		}
 	}

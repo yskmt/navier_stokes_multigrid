@@ -32,10 +32,12 @@ int write_results( double* u,
 				   );
 
 // write out the results
-int write_results( boost::multi_array<double, 3>& U,
- boost::multi_array<double, 3>& V,
- boost::multi_array<double, 3>& W,
- double* P,
+
+// write out the results
+int write_results(  double* U,
+					double* V,
+					double* W,
+					double* P,
 					cuint n_dof,
 					cuint nx,
 					cuint ny,
@@ -47,9 +49,8 @@ int write_results( boost::multi_array<double, 3>& U,
 					cdouble bcs[][6]
 					);
 
-
-// write out matrix for debuggin purpose
-int write_3d_data( boost::multi_array<double, 3>& U,
+// write out 3d data for debuggin purpose
+int write_3d_data( double* U,
+				   cuint nx, cuint ny, cuint nz,
 				   char* file_name );
-
 #endif //IO_H

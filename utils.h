@@ -40,10 +40,10 @@ int comp_pairs( const tuple<uint, uint, double>& i,
 				 const tuple<uint, uint, double>& j );
 
 void three_d_to_one_d( const unsigned int i,
-					  const unsigned int j,
-					  const unsigned int k,
-					  const unsigned int I,
-					  const unsigned int J,
+					   const unsigned int j,
+					   const unsigned int k,
+					   const unsigned int I,
+					   const unsigned int J,
 					   unsigned int& t );
 
 void one_d_to_three_d( const unsigned int t,

@@ -11,16 +11,16 @@ using namespace std;
 
 
 // implicitly solve viscosity
-void viscosity(  boost::multi_array<double, 3>& U,
-				 boost::multi_array<double, 3>& V,
-				 boost::multi_array<double, 3>& W,
+void viscosity(  double* U,
+				 double* V,
+				 double* W,
+				 double* Uss, double* Vss, double* Wss,
 				 cuint nx, cuint ny, cuint nz,
 				 cdouble hx, cdouble hy, cdouble hz,
 				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
 				 cdouble dt, cdouble nu,
 				 cdouble bcs[][6],
 				 cdouble tol, cuint max_iteration );
-
 
 // implicitly solve viscosity
 void viscosity(  boost::multi_array<double, 3>& U,
@@ -50,6 +50,7 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 							  );
 
 // set load vector for implicit viscous solve
-void viscosity_load_vector( double* F,  boost::multi_array<double, 3>& U);
+void viscosity_load_vector( double* F, double* U,
+							cuint nx, cuint ny, cuint nz);
 
 #endif //VISCOSITY_H

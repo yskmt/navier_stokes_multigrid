@@ -73,9 +73,9 @@ int main( int argc, char** argv )
 	cdouble hz2i = 1.0/(hz*hz);
 
 	// interior values
-	boost::multi_array<double, 3> U(boost::extents[nx-1][ny][nz]);
-	boost::multi_array<double, 3> V(boost::extents[nx][ny-1][nz]);
-	boost::multi_array<double, 3> W(boost::extents[nx][ny][nz-1]);
+	double* U = new double[(nx-1)*(ny)*(nz)];
+	double* V = new double[(nx)*(ny-1)*(nz)];
+	double* W = new double[(nx)*(ny)*(nz-1)];
 	double* P = new double[n_dof];
 
 	// set up initial conditions

@@ -1,9 +1,9 @@
 #include "pressure.h"
 
 // compute pressure correction
-void pressure( 	boost::multi_array<double, 3>& U,
-				boost::multi_array<double, 3>& V,
-				boost::multi_array<double, 3>& W,
+void pressure( 	double* U,
+				double* V,
+				double* W,
 				double* P,
 				double* Uss, double* Vss, double* Wss,
 				cuint nx, cuint ny, cuint nz,
@@ -51,27 +51,31 @@ void pressure( 	boost::multi_array<double, 3>& U,
 				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
 
 	// reshape
-	boost::multi_array<double, 3> Pr(boost::extents[nx][ny][nz]);
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny; j++){
-			for(int k=0; k<nz; k++){
-				uint t;
-				three_d_to_one_d(i,j,k, nx,ny, t);
-				Pr[i][j][k] = P[t];
-			}
-		}
-	}
+	// double* Pr = new double[(nx)*(ny)*(nz)];
+	// for(int i=0; i<nx; i++){
+	// 	for(int j=0; j<ny; j++){
+	// 		for(int k=0; k<nz; k++){
+	// 			uint t;
+	// 			three_d_to_one_d(i,j,k, nx,ny, t);
+	// 			Pr[i][j][k] = P[t];
+	// 		}
+	// 	}
+	// }
 
 	// compute pressure corrections
-	boost::multi_array<double, 3> Pr_x(boost::extents[nx-1][ny][nz]);
-	boost::multi_array<double, 3> Pr_y(boost::extents[nx][ny-1][nz]);
-	boost::multi_array<double, 3> Pr_z(boost::extents[nx][ny][nz-1]);
-	compute_corrections(  Pr, Pr_x, Pr_y, Pr_z, nx, ny, nz, hy, hy, hz );
+	double* Pr_x = new double[(nx-1)*(ny)*(nz)];
+	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
+	double* Pr_z = new double[(nx)*(ny)*(nz-1)];
+	compute_corrections(  P, Pr_x, Pr_y, Pr_z, nx, ny, nz, hy, hy, hz );
 
+	// 1d index
+	uint t;
+	
 	for(int i=0; i<nx-1; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
-				U[i][j][k] -= Pr_x[i][j][k];
+				three_d_to_one_d(i,j,k, nx-1, ny, t);
+				U[t] -= Pr_x[t];
 			}
 		}
 	}
@@ -79,7 +83,8 @@ void pressure( 	boost::multi_array<double, 3>& U,
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
-				V[i][j][k] -= Pr_y[i][j][k];
+				three_d_to_one_d(i,j,k, nx, ny-1, t);
+				V[t] -= Pr_y[t];
 			}
 		}
 	}
@@ -87,7 +92,8 @@ void pressure( 	boost::multi_array<double, 3>& U,
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
-				W[i][j][k] -= Pr_z[i][j][k];
+				three_d_to_one_d(i,j,k, nx, ny, t);
+				W[t] -= Pr_z[t];
 			}
 		}
 	}
@@ -328,17 +334,16 @@ void pressure_matrix( vector<tuple <uint, uint, double> >& Lp_sp,
 }
 
 // compute corrections from pressure value
-void compute_corrections( const boost::multi_array<double, 3>& Pr,
-						  boost::multi_array<double, 3>& Pr_x,
-						  boost::multi_array<double, 3>& Pr_y,
-						  boost::multi_array<double, 3>& Pr_z,
+void compute_corrections( double* Pr,
+						  double* Pr_x,
+						  double* Pr_y,
+						  double* Pr_z,
 						  cuint nx, cuint ny, cuint nz,
 						  cdouble hx, cdouble hy, cdouble hz )
 {
-	
-	staggered_first_difference( Pr, Pr_x, hx, X_DIR );
-	staggered_first_difference( Pr, Pr_y, hy, Y_DIR );
-	staggered_first_difference( Pr, Pr_z, hz, Z_DIR );
+	staggered_first_difference( Pr, Pr_x, nx, ny, nz, nx-1, ny, nz, hx, X_DIR );
+	staggered_first_difference( Pr, Pr_y, nx, ny, nz, nx, ny-1, nz, hy, Y_DIR );
+	staggered_first_difference( Pr, Pr_z, nx, ny, nz, nx, ny, nz-1, hz, Z_DIR );
 
 	return;
 }

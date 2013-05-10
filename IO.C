@@ -105,10 +105,10 @@ int write_results( double* u,
 
 
 // write out the results
-int write_results(  boost::multi_array<double, 3>& U,
-				 boost::multi_array<double, 3>& V,
-				 boost::multi_array<double, 3>& W,
-				 double* P,
+int write_results(  double* U,
+					double* V,
+					double* W,
+					double* P,
 					cuint n_dof,
 					cuint nx,
 					cuint ny,
@@ -122,24 +122,22 @@ int write_results(  boost::multi_array<double, 3>& U,
 {
 	
 	// build matrix with boundary conditions
-	boost::multi_array<double, 3> Ue(boost::extents[nx+1][ny+2][nz+2]);
-	boost::multi_array<double, 3> Ve(boost::extents[nx+2][ny+1][nz+2]);
-	boost::multi_array<double, 3> We(boost::extents[nx+2][ny+2][nz+1]);
-	grid_matrix(&U, &Ue, nx, ny, nz, X_DIR,
-				bcs[0]);
-	// grid_matrix(&V, &Ve, nx, ny, nz, Y_DIR,	bcs[1]);
-	// grid_matrix(&W, &We, nx, ny, nz, Z_DIR, bcs[2]);
+	double* Ue = new double[(nx+1)*(ny+2)*(nz+2)];
+	double* Ve = new double[(nx+2)*(ny+1)*(nz+2)];
+	double* We = new double[(nx+2)*(ny+2)*(nz+1)];
+	grid_matrix(U, Ue, nx-1, ny, nz, nx+1, ny+2, nz+2, X_DIR, bcs[0]);
+	grid_matrix(V, Ve, nx, ny-1, nz, nx+2, ny+1, nz+2, Y_DIR, bcs[1]);
+	grid_matrix(W, We, nx, ny, nz-1, nx+2, ny+2, nz+1, Z_DIR, bcs[2]);
 
 	// get U, V, W defined at cell centers
-	boost::multi_array<double, 3> Uc(boost::extents[nx][ny+2][nz+2]);
-	boost::multi_array<double, 3> Vc(boost::extents[nx+2][ny][nz+2]);
-	boost::multi_array<double, 3> Wc(boost::extents[nx+2][ny+2][nz]);
+	double* Uc = new double[(nx)*(ny+2)*(nz+2)];
+	double* Vc = new double[(nx+2)*(ny)*(nz+2)];
+	double* Wc = new double[(nx+2)*(ny+2)*(nz)];
 	// average into cell centers
-	average(Ue, Uc, X_DIR);
-	average(Ve, Vc, Y_DIR);
-	average(We, Wc, Z_DIR);
+	average(Ue, Uc, nx+1, ny+2, nz+2, nx, ny+2, nz+2, X_DIR);
+	average(Ve, Vc, nx+2, ny+1, nz+2, nx+2, ny, nz+2, Y_DIR);
+	average(We, Wc, nx+2, ny+2, nz+1, nx+2, ny+2, nz, Z_DIR);
 	
-
 	char file_name[100];
 	// write out the results in vtk format
 	ofstream file_out;
@@ -172,11 +170,11 @@ int write_results(  boost::multi_array<double, 3>& U,
 
 	file_out<<"VECTORS U float"<<endl;
 	for(int n=0; n<n_dof; n++){
-		uint i,j,k;
-		one_d_to_three_d(n, nx, ny, i,j,k);
-		file_out<<Uc[i][j+1][k+1]<<" "
-				<<Vc[i+1][j][k+1]<<" "
-				<<Wc[i+1][j+1][k]<<endl;
+		// uint i,j,k;
+		// one_d_to_three_d(n, nx, ny, i,j,k);
+		file_out<<Uc[n]<<" "
+				<<Vc[n]<<" "
+				<<Wc[n]<<endl;
 	}
 	
 	file_out.close();
@@ -186,34 +184,40 @@ int write_results(  boost::multi_array<double, 3>& U,
 	sprintf(file_name, "results_%i.dat", ts);
 	file_out.open(file_name);
 	for(int n=0; n<n_dof; n++){
-		one_d_to_three_d( n, nx, ny, i, j, k);
+		// one_d_to_three_d( n, nx, ny, i, j, k);
 		file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "<<P[n]
-				<<Uc[i][j+1][k+1]<<" "
-				<<Vc[i+1][j][k+1]<<" "
-				<<Wc[i+1][j+1][k]<<endl;
+				<<Uc[n]<<" "
+				<<Vc[n]<<" "
+				<<Wc[n]<<endl;
 	}
 	file_out.close();
 	
 }
 
 // write out 3d data for debuggin purpose
-int write_3d_data( boost::multi_array<double, 3>& U,
-				  char* file_name )
+int write_3d_data( double* U,
+				   cuint nx, cuint ny, cuint nz,
+				   char* file_name )
 {
-	boost::multi_array_types::size_type const* sizes = U.shape();
-	cuint nx = sizes[0];
-	cuint ny = sizes[1];
-	cuint nz = sizes[2];
-
 	// output files for matlab
 	ofstream file_out;
+	cout<<"open"<<endl;
 	file_out.open(file_name);
+
+	if(!file_out.is_open()){
+		cout<<"failed to open file"<<endl;
+		return 1;
+	}
+	
+	// 1d index
+	uint t;
 
 	// set up U
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
-				file_out<<i<<" "<<j<<" "<<k<<" "<<U[i][j][k]<<endl;
+				three_d_to_one_d(i,j,k, nx, ny, t);
+				file_out<<i<<" "<<j<<" "<<k<<" "<<U[t]<<endl;
 			}
 		}
 	}
