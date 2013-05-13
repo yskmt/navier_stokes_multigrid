@@ -106,31 +106,38 @@ int main( int argc, char** argv )
 	
 	// for jacobi method
 	cdouble tol = 0.01;
-	cuint max_iteration = 10000000;
+	cuint max_iteration = 1000000000;
 	cuint pre_smooth_iteration = 10;
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	// cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
-	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
+	// measuring time
+	double st_ad, ed_ad, st_vi, ed_vi, st_pr, ed_pr;
+	
 	double start=omp_get_wtime();
 	for(int ts=0; ts<nts; ts++){
 		cout<<"loop: "<<ts<<endl;
 		
 		// treat nonlinear (advection) terms
 		cout<<"calculating advection terms..."<<endl;
+		st_ad=omp_get_wtime();
 		advection(U,V,W, nx,ny,nz, hx, hy, hz, dt, bcs);
-	
+		ed_ad=omp_get_wtime();
+		
 		// implicitly solve viscosity terms
 		double* Uss = new double[n_u_dof];
 		double* Vss = new double[n_v_dof];
 		double* Wss = new double[n_w_dof];
 		cout<<"solving for viscosity terms..."<<endl;
+		st_vi = omp_get_wtime();
 		viscosity( U, V, W, Uss, Vss, Wss, nx, ny, nz, hx, hy, hz,
 				   hx2i, hy2i, hz2i,
 				   dt, nu, bcs,
 				   tol, max_iteration );
+		ed_vi = omp_get_wtime();
 
 		// cout<<"Uss"<<endl;
 		// for(int i=0; i<n_u_dof; i++)
@@ -149,11 +156,13 @@ int main( int argc, char** argv )
 				
 		// solve for pressure and update
 		cout<<"solving for pressure..."<<endl;
+		st_pr = omp_get_wtime();
 		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs,
 					  lx, ly, lz, hx, hy, hz,
 					  hx2i, hy2i, hz2i, tol, max_iteration,
 					  pre_smooth_iteration, max_level,
 					  dt);
+		ed_pr = omp_get_wtime();
 
 		// cout<<"U"<<endl;
 		// for(int i=0; i<n_u_dof; i++){
@@ -170,16 +179,21 @@ int main( int argc, char** argv )
 		// }
 		
 		// write out the results
-		cout<<"writing results..."<<endl;
-		write_results( U, V, W, P, n_dof, nx, ny, nz,
-					   xmin, ymin, zmin,
-					   hx, hy, hz, ts, bcs);
+		// cout<<"writing results..."<<endl;
+		// write_results( U, V, W, P, n_dof, nx, ny, nz,
+		// 			   xmin, ymin, zmin,
+		// 			   hx, hy, hz, ts, bcs);
 
 		delete[] Uss, Vss, Wss;
 		
 	}
 	double end=omp_get_wtime();
-	cout<<"wall clock time: "<<end-start<<" with "<<nt<<" threads"<<endl;
+
+	cout<<endl<<endl;
+	cout<<"advection time: "<<ed_ad-st_ad<<endl;
+	cout<<"viscosity time: "<<ed_vi-st_vi<<endl;
+	cout<<"pressure time: " <<ed_pr-st_pr<<endl;	
+	cout<<"total time: "    <<end-start<<" with "<<nt<<" threads"<<endl;
 
 
 	// cleanup

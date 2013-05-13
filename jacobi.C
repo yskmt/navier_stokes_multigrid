@@ -18,6 +18,7 @@ void jacobi( cdouble tol,
 	cdouble tol2 = tol*tol;
 	
 	while(Er>tol2 && ct<max_iteration){
+#pragma omp parallel for shared(u_old, u_new) num_threads(nt)
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
 
@@ -68,6 +69,7 @@ void jacobi_sparse( cdouble tol,
 	cdouble tol2 = tol*tol;
 	
 	while(Er>tol2 && ct<max_iteration){
+#pragma omp parallel for num_threads(nt) shared(U_tmp,U) 
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
 

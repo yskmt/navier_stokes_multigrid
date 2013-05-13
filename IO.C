@@ -200,8 +200,10 @@ file_out<<"VECTORS velocity float"<<endl;
 	// 			<<Wc[n]<<endl;
 	// }
 	file_out.close();
-	
+
+	return 0;
 }
+
 
 // write out 3d data for debuggin purpose
 int write_3d_data( double* U,
