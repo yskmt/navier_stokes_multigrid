@@ -130,8 +130,8 @@ int main( int argc, char** argv )
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
-	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	double start=omp_get_wtime();	
 	for(int ts=0; ts<nts; ts++){
