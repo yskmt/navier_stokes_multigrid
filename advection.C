@@ -112,7 +112,7 @@ void grid_matrix( double* U,
 	for(int i=0; i<nxe; i++){
 		for(int j=0; j<nye; j++){
 			for(int k=0; k<nze; k++){
-				three_d_to_one_d(i,j,k, nxe,nye, t);
+				three_d_to_one_d(i,j,k, nxe,nye, t);					
 				if(i==0 || i==nxe-1 || j==0 || j==nye-1
 				   || k==0 || k==nze-1)
 					Ue[t] = 0.0;
@@ -144,8 +144,8 @@ void grid_matrix( double* U,
 		
 		// y0, yl
 #pragma omp parallel for shared(Ue) num_threads(nt)
-		for(int i=0; i<nxe; i++){
-			for(int k=0; k<nze; k++){
+		for(int i=1; i<nxe-1; i++){
+			for(int k=1; k<nze-1; k++){
 				three_d_to_one_d(i,0,k, nxe,nye, t0);
 				three_d_to_one_d(i,1,k, nxe,nye, t1);
 				Ue[t0] = 2*bc[2]-Ue[t1];

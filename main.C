@@ -55,7 +55,7 @@ int main( int argc, char** argv )
 {
 	// initialize constants
 	cdouble nu = 100; // kinetic viscosity (mu/rho)
-	double dt = 1.0; //time step
+	double dt = 0.1; //time step
 	cdouble tf = 1.0; // final time
 	
 	// domain size
@@ -130,8 +130,8 @@ int main( int argc, char** argv )
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	// cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-	cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	double start=omp_get_wtime();	
 	for(int ts=0; ts<nts; ts++){
@@ -150,25 +150,40 @@ int main( int argc, char** argv )
 				   hx2i, hy2i, hz2i,
 				   dt, nu, bcs,
 				   tol, max_iteration );
+
+		// cout<<"Uss"<<endl;
+		// for(int i=0; i<n_u_dof; i++)
+		// 	cout<<Uss[i]<<endl;
+		// cout<<endl;
+
+		// cout<<"Vss"<<endl;
+		// for(int i=0; i<n_v_dof; i++)
+		// 	cout<<Vss[i]<<endl;
+		// cout<<endl;
 		
+		// cout<<"Wss"<<endl;
+		// for(int i=0; i<n_w_dof; i++)
+		// 	cout<<Wss[i]<<endl;
+		// cout<<endl;
+				
 		// solve for pressure and update
 		cout<<"solving for pressure..."<<endl;
 		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
 				  hx2i, hy2i, hz2i, tol, max_iteration );
 
 
-		cout<<"U"<<endl;
-		for(int i=0; i<n_u_dof; i++){
-			cout<<U[i]<<endl;
-		}
-		cout<<"V"<<endl;
-		for(int i=0; i<n_v_dof; i++){
-			cout<<V[i]<<endl;
-		}
-		cout<<"W"<<endl;
-		for(int i=0; i<n_w_dof; i++){
-			cout<<W[i]<<endl;
-		}
+		// cout<<"U"<<endl;
+		// for(int i=0; i<n_u_dof; i++){
+		// 	cout<<U[i]<<endl;
+		// }
+		// cout<<"V"<<endl;
+		// for(int i=0; i<n_v_dof; i++){
+		// 	cout<<V[i]<<endl;
+		// }
+		// cout<<"W"<<endl;
+		// for(int i=0; i<n_w_dof; i++){
+		// 	cout<<W[i]<<endl;
+		// }
 
 		
 		// write out the results

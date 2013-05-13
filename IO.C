@@ -116,12 +116,6 @@ int write_results(  double* U,
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
-				uint t1, t2, t3, t4;
-				three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
-				three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
-				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
-				three_d_to_one_d(i,j,k, nx,ny, t4);
-
 				file_out<<xbase+i*hx<<" "<<ybase+j*hy<<" "<<zbase+k*hz<<endl;
 			}
 		}
@@ -138,10 +132,7 @@ int write_results(  double* U,
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
-				uint t1, t2, t3, t4;
-				three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
-				three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
-				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
+				uint t4;
 				three_d_to_one_d(i,j,k, nx,ny, t4);
 	
 				file_out<<P[t4]<<endl;
@@ -154,11 +145,10 @@ file_out<<"VECTORS velocity float"<<endl;
  for(int i=0; i<nx; i++){
 	 for(int j=0; j<ny; j++){
 		 for(int k=0; k<nz; k++){
-			 uint t1, t2, t3, t4;
+			 uint t1, t2, t3;
 			 three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
 			 three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
 			 three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
-			 three_d_to_one_d(i,j,k, nx,ny, t4);
 
 			 file_out<<Uc[t1]<<" "
 					 <<Vc[t2]<<" "
