@@ -279,17 +279,17 @@ void viscosity_matrix_sparse( vector<tuple <uint, uint, double> >& L_sp,
 	// cout<<"done"<<endl;
 	
 	// output to file for testing purpose
-	char file_name[100];
-	if(dir==X_DIR) sprintf(file_name, "L%s_matrix.dat", "u");
-	if(dir==Y_DIR) sprintf(file_name, "L%s_matrix.dat", "v");
-	if(dir==Z_DIR) sprintf(file_name, "L%s_matrix.dat", "w");
+	// char file_name[100];
+	// if(dir==X_DIR) sprintf(file_name, "L%s_matrix.dat", "u");
+	// if(dir==Y_DIR) sprintf(file_name, "L%s_matrix.dat", "v");
+	// if(dir==Z_DIR) sprintf(file_name, "L%s_matrix.dat", "w");
 
-	ofstream file_out(file_name);
-	for(int i=0; i<L_sp.size(); i++){
-		file_out<<get<0>(L_sp[i])<<" "<<get<1>(L_sp[i])
-			<<" "<<get<2>(L_sp[i])<<endl;
-	}
-	file_out.close();
+	// ofstream file_out(file_name);
+	// for(int i=0; i<L_sp.size(); i++){
+	// 	file_out<<get<0>(L_sp[i])<<" "<<get<1>(L_sp[i])
+	// 		<<" "<<get<2>(L_sp[i])<<endl;
+	// }
+	// file_out.close();
 	
 }
 
@@ -298,6 +298,7 @@ void viscosity_load_vector( double* F, double* U,
 							cuint nx, cuint ny, cuint nz)
 {
 	uint t;
+#pragma omp parallel for private(t) shared(F, U) num_threads(nt)
 	for(int i=0; i<(nx); i++){
 		for(int j=0; j<(ny); j++){
 			for(int k=0; k<(nz); k++){

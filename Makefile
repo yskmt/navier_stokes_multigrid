@@ -17,11 +17,12 @@ $(EXE): $(OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 jacobi.o:jacobi.h
-main.o:jacobi.h assemble.h utils.h IO.h v_cycle.h advection.h viscosity.h
+main.o:jacobi.h utils.h IO.h v_cycle.h advection.h viscosity.h
 viscosity.o: viscosity.h
 pressure.o: pressure.h
 IO.o: IO.h advection.h
 v_cycle.o: v_cycle.h pressure.h
+pressure.o: pressure.h v_cycle.h
 
 run:
 	@ export OMP_NUM_THREADS=1

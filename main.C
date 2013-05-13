@@ -1,5 +1,4 @@
 #include "jacobi.h"
-#include "assemble.h"
 #include "utils.h"
 #include "IO.h"
 #include "v_cycle.h"
@@ -9,6 +8,7 @@
 
 // number of threads
 uint nt;
+
 // set up initial conditions
 void initial_conditions( double* U,
 						 double* V,
@@ -16,36 +16,17 @@ void initial_conditions( double* U,
 						 double* P,
 						 cuint nx, cuint ny, cuint nz )
 {
-	uint t;
-	// set up U
-	for(int i=0; i<nx-1; i++){
-		for(int j=0; j<ny; j++){
-			for(int k=0; k<nz; k++){
-				three_d_to_one_d(i,j,k, nx-1, ny, t);
-				U[t] = 0.0;
-			}
-		}
-	}
+	for(int i=0; i<(nx-1)*(ny)*(nz); i++)
+		U[i]=0.0;
 
-	// set up V
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny-1; j++){
-			for(int k=0; k<nz; k++){
-				three_d_to_one_d(i,j,k, nx, ny-1, t);
-				V[t] = 0.0;
-			}
-		}
-	}
+	for(int i=0; i<(nx)*(ny-1)*(nz); i++)
+		V[i]=0.0;
 
-	// set up W
-	for(int i=0; i<nx; i++){
-		for(int j=0; j<ny; j++){
-			for(int k=0; k<nz-1; k++){
-				three_d_to_one_d(i,j,k, nx, ny, t);
-				W[t] = 0.0;
-			}
-		}
-	}	
+	for(int i=0; i<(nx)*(ny)*(nz-1); i++)
+		W[i]=0.0;
+
+	for(int i=0; i<(nx)*(ny)*(nz); i++)
+		P[i] = 0.0;
 	
 	return;
 }
@@ -55,8 +36,8 @@ int main( int argc, char** argv )
 {
 	// initialize constants
 	cdouble nu = 100; // kinetic viscosity (mu/rho)
-	double dt = 1.0; //time step
-	cdouble tf = 1.0; // final time
+	double dt = 0.1; //time step
+	cdouble tf = 0.1; // final time
 	
 	// domain size
 	cdouble lx = 1.0; 
@@ -114,11 +95,10 @@ int main( int argc, char** argv )
 	cdouble hz2i = 1.0/(hz*hz);
 
 	// interior values
-	double* U = new double[(nx-1)*(ny)*(nz)];
-	double* V = new double[(nx)*(ny-1)*(nz)];
-	double* W = new double[(nx)*(ny)*(nz-1)];
-	double* P;
-	// double* P = new double[n_dof];
+	double* U = new double[n_u_dof];
+	double* V = new double[n_v_dof];
+	double* W = new double[n_w_dof];
+	double* P = new double[n_dof];
 
 	// set up initial conditions
 	cout<<"setting up initial conditions..."<<endl;
@@ -131,8 +111,8 @@ int main( int argc, char** argv )
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	// cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
-	cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	double start=omp_get_wtime();
 	for(int ts=0; ts<nts; ts++){
@@ -169,17 +149,17 @@ int main( int argc, char** argv )
 				
 		// solve for pressure and update
 		cout<<"solving for pressure..."<<endl;
-		P = pressure( U,V,W, Uss, Vss, Wss, nx, ny, nz, bcs,
-				  lx, ly, lz, hx, hy, hz,
-				  hx2i, hy2i, hz2i, tol, max_iteration,
-				  pre_smooth_iteration, max_level
-				  );
-
+		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs,
+					  lx, ly, lz, hx, hy, hz,
+					  hx2i, hy2i, hz2i, tol, max_iteration,
+					  pre_smooth_iteration, max_level,
+					  dt);
 
 		// cout<<"U"<<endl;
 		// for(int i=0; i<n_u_dof; i++){
 		// 	cout<<U[i]<<endl;
 		// }
+
 		// cout<<"V"<<endl;
 		// for(int i=0; i<n_v_dof; i++){
 		// 	cout<<V[i]<<endl;
@@ -188,7 +168,6 @@ int main( int argc, char** argv )
 		// for(int i=0; i<n_w_dof; i++){
 		// 	cout<<W[i]<<endl;
 		// }
-
 		
 		// write out the results
 		cout<<"writing results..."<<endl;
@@ -196,68 +175,15 @@ int main( int argc, char** argv )
 					   xmin, ymin, zmin,
 					   hx, hy, hz, ts, bcs);
 
+		delete[] Uss, Vss, Wss;
+		
 	}
 	double end=omp_get_wtime();
 	cout<<"wall clock time: "<<end-start<<" with "<<nt<<" threads"<<endl;
-	
-	/*
-	double* F;
-	double Er = tol*10;
-	double* U;
-	double start, end;
 
-	start=omp_get_wtime();
 
-// 	cout<<"fd_matrix_sparse"<<endl;
-// 	vector<tuple <uint, uint, double> > M_sp;
-// 	vector<double> val(M_sp.size(),0.0);
-// 	vector<uint> col_ind(M_sp.size(), 0);
-// 	vector<uint> row_ptr(1,0);
-	
-// 	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
-// 					 I,J,K, hx2i, hy2i, hz2i, n_dof+1);
-// 	cout<<"done"<<endl;
-
-// 	double** M = new double*[n_dof+1];
-// 	for(int n = 0; n < (n_dof+1); n++)
-// 		M[n] = new double[n_dof+1];
-// 	// initialize 
-// #pragma omp parallel for shared(M)
-// 	for(int i=0; i<n_dof+1; i++)
-// 		for(int j=0; j<n_dof+1; j++)
-// 			M[i][j] = 0;	
-// 	fd_matrix(M, I,J,K, hx2i, hy2i, hz2i, n_dof+1);
-// 	char file_name[]="test_matrix.dat";
-// 	if(write_matrix(n_dof+1,n_dof+1,M, file_name))
-
-	
-	if(max_level==0){
-		U = v_cycle_0( n_dof, nx, ny, nz,
-				   hx2i, hy2i,  hz2i,
-				   tol, max_iteration, pre_smooth_iteration,
-					   lx, lz, lz, 0, max_level-1, F, Er );
-	}
-	else{
-		U = v_cycle( n_dof, nx, ny, nz,
-							 hx2i, hy2i,  hz2i,
-							 tol, max_iteration, pre_smooth_iteration,
-					 lx, ly, lz, 0, max_level, F, Er );
-	}
-	end=omp_get_wtime();
-	cout<<"wall clock time = "<<end-start<<endl;
-	cout<<"final error: "<<sqrt(Er)<<endl;
-
-	
-	// for(int i=0; i<n_dof; i++)
-	// 	cout<<u_new[i]<<endl;
-			
-	write_results( U,
-				   n_dof,
-				   nx, ny, nz, hx, hy, hz, 100);
-	
-	// delete[] U;
-
-	*/
+	// cleanup
+	delete[] U, V, W, P;
 	
 	return 0;
 }

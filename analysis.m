@@ -1,11 +1,15 @@
 clear all
 close all
 
-nt = 0;
+nt = 1;
 
-for i=0:nt
+for i=0:nt-1
     U =  load(sprintf('results_%i.dat',i));
+    figure(i+1);
     quiver3(U(:,1),U(:,2),U(:,3), U(:,5), U(:,6), U(:,7));
+    title(sprintf('velocity at i=%i', i))
+%     pause
+    
 end
 
 % plot(U(:,1), U(:,4));

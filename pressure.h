@@ -11,7 +11,7 @@
 using namespace std;
 
 // compute pressure correction
-double* pressure( 	double* U, double* V, double* W,
+void pressure( 	double* U, double* V, double* W, double* P,
 				double* Uss, double* Vss, double* Wss,
 				cuint nx, cuint ny, cuint nz,
 				cdouble bcs[][6],
@@ -19,13 +19,15 @@ double* pressure( 	double* U, double* V, double* W,
 				cdouble hx, cdouble hy, cdouble hz,
 				cdouble hx2i, cdouble hy2i, cdouble hz2i,
 				cdouble tol, cuint max_iteration,
-				cuint pre_smooth_iteration, cuint max_level );
+					cuint pre_smooth_iteration, cuint max_level,
+					cdouble dt);
 
 // build the load vector of pressure equation
 void pressure_rhs( double* F, double* Uss, double* Vss, double* Wss,
 				   cuint nx, cuint ny, cuint nz,
 				   cdouble bcs[][6],
-				   cdouble hx, cdouble hy, cdouble hz );
+				   cdouble hx, cdouble hy, cdouble hz,
+				   cdouble dt);
 
 
 // build a pressure matrix

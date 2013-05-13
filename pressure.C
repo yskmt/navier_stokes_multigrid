@@ -2,7 +2,7 @@
 #include "v_cycle.h"
 
 // compute pressure correction
-double* pressure( 	double* U, double* V, double* W,
+void pressure( 	double* U, double* V, double* W, double* P,
 					double* Uss, double* Vss, double* Wss,
 					cuint nx, cuint ny, cuint nz,
 					cdouble bcs[][6],
@@ -10,48 +10,50 @@ double* pressure( 	double* U, double* V, double* W,
 					cdouble hx, cdouble hy, cdouble hz,
 					cdouble hx2i, cdouble hy2i, cdouble hz2i,
 					cdouble tol, cuint max_iteration,
-					cuint pre_smooth_iteration, cuint max_level )
+					cuint pre_smooth_iteration, cuint max_level,
+					cdouble dt)
 {
 	cuint n_dof = nx*ny*nz;
 
 	// residual and error
 	double* Rp = new double[n_dof];
 	double Er = tol*10;
-	double* P;
 	
-
 	// 0-level v_cycle
 	if(max_level==0)
-		P = v_cycle_0( Rp,
-					   n_dof, nx, ny, nz,
-					   hx, hy, hz,
-					   hx2i, hy2i, hz2i,
-					   tol, max_iteration, pre_smooth_iteration,
-					   hx, hy, hz,
-					   0, max_level,
-					   Er,
-					   Uss, Vss, Wss,
-					   bcs );
+		v_cycle_0( P, Rp,
+				   n_dof, nx, ny, nz,
+				   hx, hy, hz,
+				   hx2i, hy2i, hz2i,
+				   tol, max_iteration, pre_smooth_iteration,
+				   hx, hy, hz,
+				   0, max_level,
+				   Er,
+				   Uss, Vss, Wss,
+				   bcs,dt  );
 	else
 		// v-cycle
-		P = v_cycle( n_dof, nx, ny, nz,
-					 hx, hy, hz,
-					 hx2i, hy2i, hz2i,
-					 tol, max_iteration, pre_smooth_iteration,
-					 lx, ly, lz,
-					 0, max_level,
-					 Rp,
-					 Er,
-					 Uss, Vss, Wss,
-					 bcs
-					 );
-
+		v_cycle( P, n_dof, nx, ny, nz,
+				 hx, hy, hz,
+				 hx2i, hy2i, hz2i,
+				 tol, max_iteration, pre_smooth_iteration,
+				 lx, ly, lz,
+				 0, max_level-1,
+				 Rp,
+				 Er,
+				 Uss, Vss, Wss,
+				 bcs, dt
+				 );
 
 	
 	// compute pressure corrections
 	double* Pr_x = new double[(nx-1)*(ny)*(nz)];
 	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
 	double* Pr_z = new double[(nx)*(ny)*(nz-1)];
+
+	for(int i=0; i<(nx-1)*(ny)*(nz); i++)
+		Pr_x[i]=0.0;
+
 	compute_corrections(  P, Pr_x, Pr_y, Pr_z, nx, ny, nz, hy, hy, hz );
 	
 	// 1d index
@@ -59,34 +61,34 @@ double* pressure( 	double* U, double* V, double* W,
 
 	// correct velocities
 	// x-direction
-#pragma omp parallel for shared(U, Uss, Pr_x)
+#pragma omp parallel for private(t) shared(U, Uss, Pr_x) num_threads(nt)
 	for(int i=0; i<nx-1; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx-1, ny, t);
-				U[t] = Uss[t] - Pr_x[t];
+				U[t] = Uss[t] - Pr_x[t]*dt;
 			}
 		}
 	}
 	
 	// y-direction	
-#pragma omp parallel for shared(V, Vss, Pr_y)
+#pragma omp parallel for private(t) shared(V, Vss, Pr_y) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx, ny-1, t);
-				V[t] = Vss[t] - Pr_y[t];
+				V[t] = Vss[t] - Pr_y[t]*dt;
 			}
 		}
 	}
 	
 	// z-direction
-#pragma omp parallel for shared(W, Wss, Pr_z)
+#pragma omp parallel for private(t) shared(W, Wss, Pr_z) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
 				three_d_to_one_d(i,j,k, nx, ny, t);
-				W[t] = Wss[t] - Pr_z[t];
+				W[t] = Wss[t] - Pr_z[t]*dt;
 			}
 		}
 	}
@@ -94,7 +96,6 @@ double* pressure( 	double* U, double* V, double* W,
 	// cleanup
 	delete[] Pr_x, Pr_y, Pr_z;
 
-	return P;
 }
 
 // build right hand side of pressure poisson equation
@@ -102,7 +103,9 @@ void pressure_rhs( double* F,
 				   double* Uss, double* Vss, double* Wss,
 				   cuint nx, cuint ny, cuint nz,
 				   cdouble bcs[][6],
-				   cdouble hx, cdouble hy, cdouble hz )
+				   cdouble hx, cdouble hy, cdouble hz,
+				   cdouble dt
+				   )
 {
 	// for(int i=0; i<(nx-1)*ny*nz; i++)
 	// 	cout<<"Uss: "<<Uss[i]<<endl;
@@ -117,6 +120,7 @@ void pressure_rhs( double* F,
 		F[i] =0;
 	
 	// Uss contribution
+#pragma omp parallel for shared(Uss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -136,6 +140,7 @@ void pressure_rhs( double* F,
 	}
 
 	// Vss contribution
+#pragma omp parallel for shared(Vss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -155,6 +160,7 @@ void pressure_rhs( double* F,
 	}
 	
 	// Wss contribution
+#pragma omp parallel for shared(Wss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -174,6 +180,12 @@ void pressure_rhs( double* F,
 		}
 	}
 
+	// divide everyhing by dt
+	for(int i=0; i<(nx*ny*nz); i++){
+		F[i] = F[i]/dt;
+	}
+									 
+	
 	// global constraint to close the system
 	// F[n_dof] = 0;
 
@@ -183,11 +195,11 @@ void pressure_rhs( double* F,
 	// F[t] = 0;
 	
 	// output to file for testing purpose
-	ofstream file_out("Fp_vector.dat");
-	for(int i=0; i<(n_dof); i++){
-		file_out<<F[i]<<endl;
-	}
-	file_out.close();
+	// ofstream file_out("Fp_vector.dat");
+	// for(int i=0; i<(n_dof); i++){
+	// 	file_out<<F[i]<<endl;
+	// }
+	// file_out.close();
 
 	
 	return;
@@ -342,6 +354,13 @@ void compute_corrections( double* Pr,
 						  cuint nx, cuint ny, cuint nz,
 						  cdouble hx, cdouble hy, cdouble hz )
 {
+	for(int i=0; i<(nx-1)*(ny)*(nz); i++)
+		Pr_x[i]=0.0;
+	for(int i=0; i<(nx)*(ny-1)*(nz); i++)
+		Pr_y[i]=0.0;
+	for(int i=0; i<(nx)*(ny)*(nz-1); i++)
+		Pr_z[i]=0.0;
+	
 	staggered_first_difference( Pr, Pr_x, nx, ny, nz, nx-1, ny, nz, hx, X_DIR );
 	staggered_first_difference( Pr, Pr_y, nx, ny, nz, nx, ny-1, nz, hy, Y_DIR );
 	staggered_first_difference( Pr, Pr_z, nx, ny, nz, nx, ny, nz-1, hz, Z_DIR );

@@ -2,17 +2,18 @@
 #include "pressure.h"
 
 // multigrid v-cycle
-double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
-				 cdouble hx, cdouble hy, cdouble hz,
-				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
-				 cdouble lx, cdouble ly, cdouble lz,
-				 cuint level, cuint max_level,
-				 double* F,
-				 double& Er,
-				 double* Uss, double* Vss, double* Wss,
-				 cdouble bcs[][6]
-				  )
+void v_cycle( double* P, uint n_dof, cuint nx, cuint ny, cuint nz,
+			  cdouble hx, cdouble hy, cdouble hz,
+			  cdouble hx2i, cdouble hy2i, cdouble hz2i,
+			  cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+			  cdouble lx, cdouble ly, cdouble lz,
+			  cuint level, cuint max_level,
+			  double* F,
+			  double& Er,
+			  double* Uss, double* Vss, double* Wss,
+			  cdouble bcs[][6],
+			  cdouble dt
+			  )
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
 
@@ -48,21 +49,20 @@ double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
 		F = new double[n_dof];
 		cout<<"create load vector"<<endl;
 
-		pressure_rhs(F, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz);
+		pressure_rhs(F, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz, dt);
 		// load_vector(F, n_dof, I,J,K );
 	}
 
 	// cout<<"save matrix and vector"<<endl;
 	// char matrix_file[100];
-	char vector_file[100];
-	// sprintf(matrix_file, "matrix_%i.dat", level);
-	sprintf(vector_file, "vector_%i.dat", level);
-	// if(write_matrix(n_dof,n_dof,M,matrix_file))
-	// 	cout<<"write_matrix fail"<<endl;
-	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
+	// char vector_file[100];
+	// sprintf(vector_file, "vector_%i.dat", level);
+	// if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
-	double* U = new double[n_dof];
+	double* U;
+	if(level==0) U=P;
+	else U = new double[n_dof];
 	double* U_tmp = new double[n_dof];
 	// initial guess
 #pragma omp parallel for shared(U, U_tmp) num_threads(nt)
@@ -136,7 +136,6 @@ double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
 						 n_dof_coar
 						 );
 		
-		
 		// residual on coarse grid
 		double* R_coar = new double[n_dof_coar];
 		
@@ -160,7 +159,7 @@ double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
 	}
 	else{
 		// v_cycle on the coarse grid
-		U_coar = v_cycle( n_dof_coar, nx_coar, ny_coar, nz_coar,
+		v_cycle( U_coar, n_dof_coar, nx_coar, ny_coar, nz_coar,
 						  hx_coar, hy_coar, hz_coar,
 						  hx2i_coar, hy2i_coar, hz2i_coar,
 						  tol, max_iteration, pre_smooth_iteration,
@@ -168,7 +167,7 @@ double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
 						  level+1, max_level,
 						  F_coar, Er,
 						  Uss, Vss, Wss,
-						  bcs
+						  bcs, dt
 						  );
 		
 		cdouble dx_coar = lx/(nx_coar);
@@ -218,7 +217,6 @@ double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
 	delete[] E;
 	delete[] U_coar, U_coar_tmp;
 	
-	return U;
 }
 
 // 3D full weight restriction
@@ -324,7 +322,7 @@ void fine_map( double* U, double* U_new,
 
 
 // 0_level v-cycle for testing purpose
-double* v_cycle_0( double* Rp,
+void v_cycle_0( double* P, double* Rp,
 				   uint n_dof, cuint nx, cuint ny, cuint nz,
 				   cdouble hx, cdouble hy, cdouble hz,
 				   cdouble hx2i, cdouble hy2i, cdouble hz2i,
@@ -333,12 +331,10 @@ double* v_cycle_0( double* Rp,
 				   cuint level, cuint max_level,
 				   double& Er,
 				   double* Uss, double* Vss, double* Wss,
-				   cdouble bcs[][6]				   
-				   )
+				cdouble bcs[][6],
+				cdouble dt)
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
-
-
 
 	// load vector (extra +1 for global constraint) 
 	double* Fp = new double[n_dof];
@@ -350,7 +346,7 @@ double* v_cycle_0( double* Rp,
 	vector<uint> Lp_row_ptr(1,0);		
 	
 	// build right hand side of pressure poisson equation
-	pressure_rhs(Fp, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz);
+	pressure_rhs(Fp, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz, dt);
 
 	// build pressure matrix
 	pressure_matrix( Lp_sp,
@@ -362,7 +358,6 @@ double* v_cycle_0( double* Rp,
 
 	// solve dicrete poisson equation: Lp\Fp
 	// construct solution vector
-	double* P = new double[n_dof];
 	double* P_tmp = new double[n_dof];
 	// initial guess
 #pragma omp parallel for shared(P, P_tmp) num_threads(nt)
@@ -375,6 +370,7 @@ double* v_cycle_0( double* Rp,
 	jacobi_sparse(tol, max_iteration, n_dof, P, P_tmp,
 				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
 
+	delete[] P_tmp;
 
-	return P;
+	return ;
 }

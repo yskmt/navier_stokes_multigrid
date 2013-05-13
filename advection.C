@@ -108,7 +108,7 @@ void grid_matrix( double* U,
 	uint t, t0, t1;
 
 	// insert values
-#pragma omp parallel for shared(Ue, U) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue, U) num_threads(nt)
 	for(int i=0; i<nxe; i++){
 		for(int j=0; j<nye; j++){
 			for(int k=0; k<nze; k++){
@@ -132,7 +132,7 @@ void grid_matrix( double* U,
 	// for cofficients u
 	if( dir==X_DIR){
 		
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t) shared(Ue) num_threads(nt)
 		for(int j=0; j<nye; j++){
 			for(int k=0; k<nze; k++){
 				three_d_to_one_d(0,j,k, nxe,nye, t);
@@ -143,7 +143,7 @@ void grid_matrix( double* U,
 		}
 		
 		// y0, yl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int i=1; i<nxe-1; i++){
 			for(int k=1; k<nze-1; k++){
 				three_d_to_one_d(i,0,k, nxe,nye, t0);
@@ -157,7 +157,7 @@ void grid_matrix( double* U,
 		}
 
 		// z0, zl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int i=0; i<nxe; i++){
 			for(int j=0; j<nye; j++){
 				three_d_to_one_d(i,j,0, nxe,nye, t0);
@@ -177,7 +177,7 @@ void grid_matrix( double* U,
 		
 		// account for boundary conditions
 		// x0, xl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int j=0; j<nye; j++){
 			for(int k=0; k<nze; k++){
 				three_d_to_one_d(0,j,k, nxe,nye, t0);
@@ -192,7 +192,7 @@ void grid_matrix( double* U,
 		}
 
 		// y0, yl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t) shared(Ue) num_threads(nt)
 		for(int i=0; i<nxe; i++){
 			for(int k=0; k<nze; k++){
 				three_d_to_one_d(i,0,k, nxe,nye, t);
@@ -204,7 +204,7 @@ void grid_matrix( double* U,
 		}
 
 		// z0, zl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int i=0; i<nxe; i++){
 			for(int j=0; j<nye; j++){
 				three_d_to_one_d(i,j,0, nxe,nye, t0);
@@ -225,7 +225,7 @@ void grid_matrix( double* U,
 
 		// account for boundary conditions
 		// x0, xl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int j=0; j<nye; j++){
 			for(int k=0; k<nze; k++){
 				three_d_to_one_d(0,j,k, nxe,nye, t0);
@@ -239,7 +239,7 @@ void grid_matrix( double* U,
 		}
 
 		// y0, yl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t, t0, t1) shared(Ue) num_threads(nt)
 		for(int i=0; i<nxe; i++){
 			for(int k=0; k<nze; k++){
 				three_d_to_one_d(i,0,k, nxe,nye, t0);
@@ -253,7 +253,7 @@ void grid_matrix( double* U,
 		}
 
 		// z0, zl
-#pragma omp parallel for shared(Ue) num_threads(nt)
+#pragma omp parallel for private(t) shared(Ue) num_threads(nt)
 		for(int i=0; i<nxe; i++){
 			for(int j=0; j<nye; j++){
 				three_d_to_one_d(i,j,0, nxe,nye, t);
@@ -289,7 +289,7 @@ void average( const double* Ue, // raw value
 	// x-average
 	if(dir==X_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -305,7 +305,7 @@ void average( const double* Ue, // raw value
 	// y-average
 	else if(dir==Y_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -321,7 +321,7 @@ void average( const double* Ue, // raw value
 	// z-average
 	else if(dir==Z_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -376,7 +376,7 @@ void average( const double* Ue, // raw value
 	// x-direction and square
 	else if(dir==X2_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -393,7 +393,7 @@ void average( const double* Ue, // raw value
 	// y-direction and square
 	else if(dir==Y2_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -410,7 +410,7 @@ void average( const double* Ue, // raw value
 	// z-direction and square
 	if(dir==Z2_DIR){
 		// interpolate values by averaging
-#pragma omp parallel for shared(Ue, Ua) num_threads(nt)
+#pragma omp parallel for private(ta, te1, te2) shared(Ue, Ua) num_threads(nt)
 		for(int i=0; i<(nxa); i++){
 			for(int j=0; j<(nya); j++){
 				for(int k=0; k<(nza); k++){
@@ -464,7 +464,7 @@ void staggered_first_difference( const double* UV,
 	uint t1, t2, t3;
 	// difference in x-direction
 	if( dir==X_DIR){
-#pragma omp parallel for shared(UV_x, UV) num_threads(nt)
+#pragma omp parallel for private(t1, t2, t3) shared(UV_x, UV) num_threads(nt)
 		for(int i=0; i<nx-1; i++){
 			for(int j=0; j<ny; j++){
 				for(int k=0; k<nz; k++){
@@ -480,8 +480,7 @@ void staggered_first_difference( const double* UV,
 
 	// difference in y-direction
 	if( dir==Y_DIR ){
-		// boost::multi_array<double, 3> UV_y(boost::extents[nx][ny-1][nz]);
-#pragma omp parallel for shared(UV_x, UV) num_threads(nt)
+#pragma omp parallel for private(t1, t2, t3) shared(UV_x, UV) num_threads(nt)
 		for(int i=0; i<nx; i++){
 			for(int j=0; j<ny-1; j++){
 				for(int k=0; k<nz; k++){
@@ -497,7 +496,7 @@ void staggered_first_difference( const double* UV,
 
 	// difference in z-direction
 	if( dir==Z_DIR ){
-#pragma omp parallel for shared(UV_x, UV) num_threads(nt)
+#pragma omp parallel for private(t1, t2, t3) shared(UV_x, UV) num_threads(nt)
 		for(int i=0; i<nx; i++){
 			for(int j=0; j<ny; j++){
 				for(int k=0; k<nz-1; k++){
@@ -686,11 +685,11 @@ void consolidate_advection( double* U,
 							cdouble dt )
 {
 	// need to truncate some terms
-
 	uint t0, t1, t2, t3;
+
 	
 	// x-direction
-#pragma omp parallel for shared(U, U2_x, UV_y, UW_z) num_threads(nt)
+#pragma omp parallel for private(t0, t1, t2, t3) shared(U, U2_x, UV_y, UW_z) num_threads(nt)
 	for(int i=0; i<(nx-1); i++){
 		for(int j=0; j<(ny); j++){
 			for(int k=0; k<(nz); k++){
@@ -705,7 +704,7 @@ void consolidate_advection( double* U,
 	}
 
 	// y-direction
-#pragma omp parallel for shared(V, V2_y, VU_x, VW_z) num_threads(nt)
+#pragma omp parallel for private(t0, t1, t2, t3) shared(V, V2_y, VU_x, VW_z) num_threads(nt)
 	for(int i=0; i<(nx); i++){
 		for(int j=0; j<(ny-1); j++){
 			for(int k=0; k<(nz); k++){
@@ -720,7 +719,7 @@ void consolidate_advection( double* U,
 	}
 
 	// z-direction
-#pragma omp parallel for shared(W, W2_z, WU_x, WV_y) num_threads(nt)
+#pragma omp parallel for private(t0, t1, t2, t3) shared(W, W2_z, WU_x, WV_y) num_threads(nt)
 	for(int i=0; i<(nx); i++){
 		for(int j=0; j<(ny); j++){
 			for(int k=0; k<(nz-1); k++){
