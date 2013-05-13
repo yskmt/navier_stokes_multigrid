@@ -3,14 +3,14 @@
 
 // compute pressure correction
 double* pressure( 	double* U, double* V, double* W,
-				double* Uss, double* Vss, double* Wss,
-				cuint nx, cuint ny, cuint nz,
-				cdouble bcs[][6],
-				cdouble lx, cdouble ly, cdouble lz,
-				cdouble hx, cdouble hy, cdouble hz,
-				cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				cdouble tol, cuint max_iteration,
-				cuint pre_smooth_iteration, cuint max_level )
+					double* Uss, double* Vss, double* Wss,
+					cuint nx, cuint ny, cuint nz,
+					cdouble bcs[][6],
+					cdouble lx, cdouble ly, cdouble lz,
+					cdouble hx, cdouble hy, cdouble hz,
+					cdouble hx2i, cdouble hy2i, cdouble hz2i,
+					cdouble tol, cuint max_iteration,
+					cuint pre_smooth_iteration, cuint max_level )
 {
 	cuint n_dof = nx*ny*nz;
 
@@ -22,29 +22,29 @@ double* pressure( 	double* U, double* V, double* W,
 
 	// 0-level v_cycle
 	if(max_level==0)
-	P = v_cycle_0( Rp,
-						   n_dof, nx, ny, nz,
-						   hx, hy, hz,
-						   hx2i, hy2i, hz2i,
-						   tol, max_iteration, pre_smooth_iteration,
-						   hx, hy, hz,
-						   0, max_level,
-						   Er,
-						   Uss, Vss, Wss,
-						   bcs );
+		P = v_cycle_0( Rp,
+					   n_dof, nx, ny, nz,
+					   hx, hy, hz,
+					   hx2i, hy2i, hz2i,
+					   tol, max_iteration, pre_smooth_iteration,
+					   hx, hy, hz,
+					   0, max_level,
+					   Er,
+					   Uss, Vss, Wss,
+					   bcs );
 	else
-	// v-cycle
-	P = v_cycle( n_dof, nx, ny, nz,
-				 hx, hy, hz,
-				 hx2i, hy2i, hz2i,
-				 tol, max_iteration, pre_smooth_iteration,
-				 lx, ly, lz,
-				 0, max_level,
-				 Rp,
-				 Er,
-				 Uss, Vss, Wss,
-				 bcs
-				 );
+		// v-cycle
+		P = v_cycle( n_dof, nx, ny, nz,
+					 hx, hy, hz,
+					 hx2i, hy2i, hz2i,
+					 tol, max_iteration, pre_smooth_iteration,
+					 lx, ly, lz,
+					 0, max_level,
+					 Rp,
+					 Er,
+					 Uss, Vss, Wss,
+					 bcs
+					 );
 
 
 	
@@ -59,6 +59,7 @@ double* pressure( 	double* U, double* V, double* W,
 
 	// correct velocities
 	// x-direction
+#pragma omp parallel for shared(U, Uss, Pr_x)
 	for(int i=0; i<nx-1; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -69,6 +70,7 @@ double* pressure( 	double* U, double* V, double* W,
 	}
 	
 	// y-direction	
+#pragma omp parallel for shared(V, Vss, Pr_y)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
@@ -79,6 +81,7 @@ double* pressure( 	double* U, double* V, double* W,
 	}
 	
 	// z-direction
+#pragma omp parallel for shared(W, Wss, Pr_z)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
@@ -271,14 +274,14 @@ void pressure_matrix( vector<tuple <uint, uint, double> >& Lp_sp,
 
 
 		// global constraint to close the system
-// #pragma omp for
-// 		for(int i=0; i<n_dof; i++){
-// 			sparse_add(M[myrank], i, n_dof, 1);
-// 			sparse_add(M[myrank], n_dof, i, 1);
-// 		}
-// 		if(myrank==0)
-// 			sparse_add(M[myrank], n_dof, n_dof,
-// 					   n_dof);
+		// #pragma omp for
+		// 		for(int i=0; i<n_dof; i++){
+		// 			sparse_add(M[myrank], i, n_dof, 1);
+		// 			sparse_add(M[myrank], n_dof, i, 1);
+		// 		}
+		// 		if(myrank==0)
+		// 			sparse_add(M[myrank], n_dof, n_dof,
+		// 					   n_dof);
 		
 	} // end parallel region		
 
