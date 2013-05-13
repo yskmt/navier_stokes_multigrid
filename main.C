@@ -117,7 +117,8 @@ int main( int argc, char** argv )
 	double* U = new double[(nx-1)*(ny)*(nz)];
 	double* V = new double[(nx)*(ny-1)*(nz)];
 	double* W = new double[(nx)*(ny)*(nz-1)];
-	double* P = new double[n_dof];
+	double* P;
+	// double* P = new double[n_dof];
 
 	// set up initial conditions
 	cout<<"setting up initial conditions..."<<endl;
@@ -135,7 +136,7 @@ int main( int argc, char** argv )
 
 	double start=omp_get_wtime();	
 	for(int ts=0; ts<nts; ts++){
-		cout<<"loop :"<<ts<<endl;
+		cout<<"loop: "<<ts<<endl;
 		
 		// treat nonlinear (advection) terms
 		cout<<"calculating advection terms..."<<endl;
@@ -168,8 +169,11 @@ int main( int argc, char** argv )
 				
 		// solve for pressure and update
 		cout<<"solving for pressure..."<<endl;
-		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
-				  hx2i, hy2i, hz2i, tol, max_iteration );
+		P = pressure( U,V,W, Uss, Vss, Wss, nx, ny, nz, bcs,
+				  lx, ly, lz, hx, hy, hz,
+				  hx2i, hy2i, hz2i, tol, max_iteration,
+				  pre_smooth_iteration, max_level
+				  );
 
 
 		// cout<<"U"<<endl;

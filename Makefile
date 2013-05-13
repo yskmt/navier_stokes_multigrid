@@ -21,10 +21,11 @@ main.o:jacobi.h assemble.h utils.h IO.h v_cycle.h advection.h viscosity.h
 viscosity.o: viscosity.h
 pressure.o: pressure.h
 IO.o: IO.h advection.h
+v_cycle.o: v_cycle.h pressure.h
 
 run:
 	@ export OMP_NUM_THREADS=1
-	@./multigrid 1 3 10 10 10
+	@./multigrid 1 1 12 12 12
 
 clean:
 	@ rm *.o multigrid

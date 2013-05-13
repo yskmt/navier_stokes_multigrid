@@ -1,56 +1,53 @@
 #include "pressure.h"
+#include "v_cycle.h"
 
 // compute pressure correction
-void pressure( 	double* U, double* V, double* W,
-				double* P,
+double* pressure( 	double* U, double* V, double* W,
 				double* Uss, double* Vss, double* Wss,
 				cuint nx, cuint ny, cuint nz,
 				cdouble bcs[][6],
+				cdouble lx, cdouble ly, cdouble lz,
 				cdouble hx, cdouble hy, cdouble hz,
 				cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				cdouble tol, cuint max_iteration )
+				cdouble tol, cuint max_iteration,
+				cuint pre_smooth_iteration, cuint max_level )
 {
 	cuint n_dof = nx*ny*nz;
 
-	// load vector (extra +1 for global constraint) 
-	double* Fp = new double[n_dof];
-	// initialize
-	for(int i=0; i<n_dof; i++)
-		Fp[i] =0;
-	
-	// Lp
-	vector<tuple <uint, uint, double> > Lp_sp;
-	vector<double> Lp_val(Lp_sp.size(),0.0);
-	vector<uint> Lp_col_ind(Lp_sp.size(), 0);
-	vector<uint> Lp_row_ptr(1,0);		
-	
-	// build right hand side of pressure poisson equation
-	pressure_rhs(Fp, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz);
-
-	// build pressure matrix
-	pressure_matrix( Lp_sp,
-					 Lp_val, Lp_col_ind, Lp_row_ptr,
-					 nx, ny, nz,
-					 hx2i, hy2i, hz2i,
-					 n_dof
-					 );	
-
-	// solve dicrete poisson equation: Lp\Fp
-	// construct solution vector
-	double* P_tmp = new double[n_dof];
-	// initial guess
-#pragma omp parallel for shared(P, P_tmp) num_threads(nt)
-	for(int n=0; n<n_dof; n++){
-	    P[n] = 0.0;
-	    P_tmp[n] = 0.0;
-    }
 	// residual and error
 	double* Rp = new double[n_dof];
 	double Er = tol*10;
-	// jacobi iteration
-	jacobi_sparse(tol, max_iteration, n_dof, P, P_tmp,
-				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
+	double* P;
+	
 
+	// 0-level v_cycle
+	if(max_level==0)
+	P = v_cycle_0( Rp,
+						   n_dof, nx, ny, nz,
+						   hx, hy, hz,
+						   hx2i, hy2i, hz2i,
+						   tol, max_iteration, pre_smooth_iteration,
+						   hx, hy, hz,
+						   0, max_level,
+						   Er,
+						   Uss, Vss, Wss,
+						   bcs );
+	else
+	// v-cycle
+	P = v_cycle( n_dof, nx, ny, nz,
+				 hx, hy, hz,
+				 hx2i, hy2i, hz2i,
+				 tol, max_iteration, pre_smooth_iteration,
+				 lx, ly, lz,
+				 0, max_level,
+				 Rp,
+				 Er,
+				 Uss, Vss, Wss,
+				 bcs
+				 );
+
+
+	
 	// compute pressure corrections
 	double* Pr_x = new double[(nx-1)*(ny)*(nz)];
 	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
@@ -94,7 +91,7 @@ void pressure( 	double* U, double* V, double* W,
 	// cleanup
 	delete[] Pr_x, Pr_y, Pr_z;
 
-	return;
+	return P;
 }
 
 // build right hand side of pressure poisson equation
@@ -111,7 +108,11 @@ void pressure_rhs( double* F,
 	// for(int i=0; i<(nx)*ny*(nz-1); i++)
 	// 	cout<<"Wss: "<<Wss[i]<<endl;
 	cuint n_dof = nx*ny*nz;
-		
+
+	// initialize
+	for(int i=0; i<n_dof; i++)
+		F[i] =0;
+	
 	// Uss contribution
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){

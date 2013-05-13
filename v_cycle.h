@@ -18,11 +18,17 @@ cdouble fw_stencil[3][3][3] =
 			 {1.0/64.0,2.0/64.0,1.0/64.0}}};
 
 
-double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
-			  cdouble dx2i, cdouble dy2i, cdouble dz2i,
-			  cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
-			  cdouble width, cdouble length, cdouble height,
-				 cuint level, cuint max_level, double* F, double& Er
+// multigrid v-cycle
+double* v_cycle( uint n_dof, cuint nx, cuint ny, cuint nz,
+				 cdouble hx, cdouble hy, cdouble hz,
+				 cdouble hx2i, cdouble hy2i, cdouble hz2i,
+				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+				 cdouble lx, cdouble ly, cdouble lz,
+				 cuint level, cuint max_level,
+				 double* F,
+				 double& Er,
+				 double* Uss, double* Vss, double* Wss,
+				 cdouble bcs[][6]
 				 );
 
 // 3D full weight restriction
@@ -45,13 +51,16 @@ void fine_map( double* U, double* U_new,
 			   uint box_new[][2][2] );
 
 // 0 level v_cycle
-double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
-				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
-				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
-				 cdouble width, cdouble length, cdouble height,
-				 cuint level, cuint max_level,
-				 double* F,
-				   double& Er
+double* v_cycle_0( double* Rp,
+				   uint n_dof, cuint nx, cuint ny, cuint nz,
+				   cdouble hx, cdouble hy, cdouble hz,
+				   cdouble hx2i, cdouble hy2i, cdouble hz2i,
+				   cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+				   cdouble width, cdouble length, cdouble height,
+				   cuint level, cuint max_level,
+				   double& Er,
+				   double* Uss, double* Vss, double* Wss,
+				   cdouble bcs[][6]				   
 				   );
 
 #endif // V_CYCLE_H

@@ -11,16 +11,15 @@
 using namespace std;
 
 // compute pressure correction
-void pressure( 	double* U,
-				double* V,
-				double* W,
-				double* P,
+double* pressure( 	double* U, double* V, double* W,
 				double* Uss, double* Vss, double* Wss,
 				cuint nx, cuint ny, cuint nz,
 				cdouble bcs[][6],
+				cdouble lx, cdouble ly, cdouble lz,
 				cdouble hx, cdouble hy, cdouble hz,
 				cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				cdouble tol, cuint max_iteration );
+				cdouble tol, cuint max_iteration,
+				cuint pre_smooth_iteration, cuint max_level );
 
 // build the load vector of pressure equation
 void pressure_rhs( double* F, double* Uss, double* Vss, double* Wss,

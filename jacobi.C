@@ -20,7 +20,7 @@ void jacobi( cdouble tol,
 	while(Er>tol2 && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			u_old[i]=u_new[i];
-		
+
 #pragma omp parallel for shared(M,F,u_old,u_new) num_threads(nt)
 		for(int i=0; i<n_dof; i++){
 			double S=0;
@@ -34,15 +34,18 @@ void jacobi( cdouble tol,
 			// cout<<u_new[i]<<endl;
 		}
 
+		
 		Er = convergence_check(M, u_new, F, R, n_dof);
-		// cout<<"Er: "<<Er<<endl;
+		cout<<"Er: "<<Er<<endl;
 		ct++;
 	}
-
+	
+	
 	if(max_iteration==0) 		
 		Er = convergence_check(M, u_new, F, R, n_dof);
 
-	cout<<"convergence reached after "<<ct<<"iterations"<<endl;
+	if(Er<tol2)
+		cout<<"convergence reached after "<<ct<<"iterations"<<endl;
 	
 	return;
 }
@@ -67,7 +70,8 @@ void jacobi_sparse( cdouble tol,
 	while(Er>tol2 && ct<max_iteration){
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
-		
+
+		// double sta=omp_get_wtime();
 #pragma omp parallel for num_threads(nt) shared(F,U_tmp,U) 
  		for(int i=0; i<row_ptr.size()-1; i++){
 			double S=0;
@@ -82,7 +86,8 @@ void jacobi_sparse( cdouble tol,
 			}
 			U[i] = 1/T * (F[i]-S);
 		}
-		
+
+		// cout<<"time: "<<omp_get_wtime()-sta<<endl;		
 		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
 		// cout<<"i: "<<ct<<" Er: "<<Er<<endl;
 		ct++;
@@ -107,7 +112,7 @@ double convergence_check ( double** M,
 						   )
 {
 	double E=0;
-#pragma omp parallel for shared(R,M,U,F,E) num_threads(nt)
+	#pragma omp parallel for shared(R,M,U,F) num_threads(nt) reduction(+:E)
 	for(int i=0; i<n_dof; i++){
 		R[i] = 0.0;
 		for(int j=0; j<n_dof; j++){
@@ -130,7 +135,7 @@ double convergence_check_sparse ( const vector<double>& val,
 								  cuint n_dof)
 {
 	double E=0;
-#pragma omp parallel for shared(R,val,col_ind,row_ptr,U,F,E) num_threads(nt)
+	#pragma omp parallel for shared(R,val,col_ind,row_ptr,U,F) num_threads(nt) reduction(+:E)
 	for(int i=0; i<row_ptr.size()-1; i++){
 		R[i] = 0.0;
 		for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
