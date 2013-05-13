@@ -111,8 +111,8 @@ int main( int argc, char** argv )
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
-	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	// measuring time
 	double st_ad, ed_ad, st_vi, ed_vi, st_pr, ed_pr;
@@ -180,9 +180,9 @@ int main( int argc, char** argv )
 		
 		// write out the results
 		// cout<<"writing results..."<<endl;
-		// write_results( U, V, W, P, n_dof, nx, ny, nz,
-		// 			   xmin, ymin, zmin,
-		// 			   hx, hy, hz, ts, bcs);
+		write_results( U, V, W, P, n_dof, nx, ny, nz,
+					   xmin, ymin, zmin,
+					   hx, hy, hz, ts, bcs);
 
 		delete[] Uss, Vss, Wss;
 		

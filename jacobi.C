@@ -37,7 +37,7 @@ void jacobi( cdouble tol,
 
 		
 		Er = convergence_check(M, u_new, F, R, n_dof);
-		cout<<"Er: "<<Er<<endl;
+		// cout<<"Er: "<<Er<<endl;
 		ct++;
 	}
 	
@@ -67,43 +67,66 @@ void jacobi_sparse( cdouble tol,
 	// iteration counter
 	int ct = 0;
 	cdouble tol2 = tol*tol;
+	double E=tol2*100;
 	
-	while(Er>tol2 && ct<max_iteration){
-#pragma omp parallel for num_threads(nt) shared(U_tmp,U) 
-		for(int i=0;i<n_dof;i++)
-			U_tmp[i]=U[i];
+#pragma omp parallel shared(F, U_tmp, U, R, val,col_ind, row_ptr, ct) num_threads(nt)
+	{
+		while(E>tol2 && ct<max_iteration){
+#pragma omp for
+			for(int i=0;i<n_dof;i++)
+				U_tmp[i]=U[i];
 
-		// double sta=omp_get_wtime();
-#pragma omp parallel for num_threads(nt) shared(F,U_tmp,U) 
- 		for(int i=0; i<row_ptr.size()-1; i++){
-			double S=0;
-			double T=0;
-			for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
-				// cout<<"U_tmp "<<U_tmp[col_ind[j]]<<endl;
-				if(i!=col_ind[j])
-					S += val[j]*U_tmp[col_ind[j]];
-				else{ // get diagonal element
-					T = val[j];					
+			// double sta=omp_get_wtime();
+#pragma omp for 
+			for(int i=0; i<row_ptr.size()-1; i++){
+				double S=0;
+				double T=0;
+				for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
+					// cout<<"U_tmp "<<U_tmp[col_ind[j]]<<endl;
+					if(i!=col_ind[j])
+						S += val[j]*U_tmp[col_ind[j]];
+					else{ // get diagonal element
+						T = val[j];					
+					}
 				}
+				U[i] = 1/T * (F[i]-S);
 			}
-			U[i] = 1/T * (F[i]-S);
+
+			// cout<<"time: "<<omp_get_wtime()-sta<<endl;		
+			// Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
+						E=0;
+#pragma omp for reduction(+:E)
+			for(int i=0; i<row_ptr.size()-1; i++){
+			    R[i] = 0.0;
+			    for(int j=row_ptr[i]; j<row_ptr[i+1]; j++){
+			        R[i] -= val[j]*U[col_ind[j]];
+		        }
+			    R[i] += F[i];
+			    E += R[i]*R[i];
 		}
+			// cout<<"end "<<E<<endl;
+		
+			// if(int(max_iteration/1000!=0))
+				// if(ct%int(max_iteration/1000)==0)
+			if(!omp_get_thread_num())
+				ct++;
 
-		// cout<<"time: "<<omp_get_wtime()-sta<<endl;		
-		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
+#pragma omp barrier
+			
+		} // end while
+			
 
-		if(int(max_iteration/1000!=0))
-			if(ct%int(max_iteration/1000)==0)
-				cout<<"i: "<<ct<<" Er: "<<Er<<endl;
-		ct++;
-	}
+		} //end parallel
 
-	if(max_iteration==0) 		
-		// Er = convergence_check(M, U, F, R, n_dof);
-		Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
+			Er=E;
+
+			
+			if(max_iteration==0) 		
+				// Er = convergence_check(M, U, F, R, n_dof);
+				Er = convergence_check_sparse(val, col_ind, row_ptr, U, F, R, n_dof);
 
 	
-	cout<<"convergence reached after "<<ct<<" iterations"<<endl;
+			cout<<"convergence reached after "<<ct<<" iterations"<<endl;
 	
 	
 	return;
