@@ -55,7 +55,7 @@ int main( int argc, char** argv )
 {
 	// initialize constants
 	cdouble nu = 100; // kinetic viscosity (mu/rho)
-	double dt = 0.1; //time step
+	double dt = 1.0; //time step
 	cdouble tf = 1.0; // final time
 	
 	// domain size
@@ -130,7 +130,7 @@ int main( int argc, char** argv )
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {0,0,0,0,0,1}, {0,0,0,0,0,1}, {0,0,0,0,0,0}};
 	// cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	double start=omp_get_wtime();	
