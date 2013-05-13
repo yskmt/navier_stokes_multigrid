@@ -68,7 +68,7 @@ void jacobi_sparse( cdouble tol,
 		for(int i=0;i<n_dof;i++)
 			U_tmp[i]=U[i];
 		
-#pragma omp parallel for num_threads(nt) shared(row_ptr,val,col_ind,F,U_tmp,U) 
+#pragma omp parallel for num_threads(nt) shared(F,U_tmp,U) 
  		for(int i=0; i<row_ptr.size()-1; i++){
 			double S=0;
 			double T=0;

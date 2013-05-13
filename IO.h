@@ -20,20 +20,6 @@ int write_vector( cuint P,
 				  char* file_name);
 
 // write out the results
-int write_results( double* u,
-				   cuint n_dof,
-				   cuint I,
-				   cuint J,
-				   cuint K,
-				   cdouble dx,
-				   cdouble dy,
-				   cdouble dz,
-				   cuint level
-				   );
-
-// write out the results
-
-// write out the results
 int write_results(  double* U,
 					double* V,
 					double* W,
@@ -42,6 +28,9 @@ int write_results(  double* U,
 					cuint nx,
 					cuint ny,
 					cuint nz,
+					cdouble xmin,
+					cdouble ymin,
+					cdouble zmin,
 					cdouble hx,
 					cdouble hy,
 					cdouble hz,

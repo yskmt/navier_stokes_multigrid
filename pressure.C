@@ -1,9 +1,7 @@
 #include "pressure.h"
 
 // compute pressure correction
-void pressure( 	double* U,
-				double* V,
-				double* W,
+void pressure( 	double* U, double* V, double* W,
 				double* P,
 				double* Uss, double* Vss, double* Wss,
 				cuint nx, cuint ny, cuint nz,
@@ -53,18 +51,6 @@ void pressure( 	double* U,
 	jacobi_sparse(tol, max_iteration, n_dof, P, P_tmp,
 				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
 
-	// reshape
-	// double* Pr = new double[(nx)*(ny)*(nz)];
-	// for(int i=0; i<nx; i++){
-	// 	for(int j=0; j<ny; j++){
-	// 		for(int k=0; k<nz; k++){
-	// 			uint t;
-	// 			three_d_to_one_d(i,j,k, nx,ny, t);
-	// 			Pr[i][j][k] = P[t];
-	// 		}
-	// 	}
-	// }
-
 	// compute pressure corrections
 	double* Pr_x = new double[(nx-1)*(ny)*(nz)];
 	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
@@ -73,7 +59,9 @@ void pressure( 	double* U,
 	
 	// 1d index
 	uint t;
-	
+
+	// correct velocities
+	// x-direction
 	for(int i=0; i<nx-1; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -83,6 +71,7 @@ void pressure( 	double* U,
 		}
 	}
 	
+	// y-direction	
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
@@ -92,6 +81,7 @@ void pressure( 	double* U,
 		}
 	}
 	
+	// z-direction
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
@@ -184,9 +174,9 @@ void pressure_rhs( double* F,
 	// F[n_dof] = 0;
 
 	// point boundary condition at the center of domain
-	uint t;
-	three_d_to_one_d(uint(nx/2),uint(ny/2),uint(nz/2), nx,ny, t);
-	F[t] = 0;
+	// uint t;
+	// three_d_to_one_d(uint(nx/2),uint(ny/2),uint(nz/2), nx,ny, t);
+	// F[t] = 0;
 	
 	// output to file for testing purpose
 	ofstream file_out("Fp_vector.dat");

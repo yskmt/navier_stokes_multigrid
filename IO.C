@@ -48,63 +48,6 @@ int write_vector( cuint P,
 }
 
 // write out the results
-int write_results( double* u,
-				   cuint n_dof,
-				   cuint I,
-				   cuint J,
-				   cuint K,
-				   cdouble dx,
-				   cdouble dy,
-				   cdouble dz,
-				   cuint level
-				   )
-{
-	char file_name[100];
-	// write out the results in vtk format
-	ofstream file_out;
-	sprintf(file_name, "results_%i.vtk", level);
-	file_out.open (file_name);
-	if(!file_out.is_open()){
-		return 1;
-	}
-	
-	// header
-	file_out<<"# vtk DataFile Version 3.0"<<endl;
-	file_out<<"3d poisson problem"<<endl
-			<<"ASCII"<<endl
-			<<"DATASET STRUCTURED_GRID"<<endl
-			<<"DIMENSIONS "<<I<<" "<<J<<" "<<K<<endl
-			<<"POINTS "<<n_dof<<" "<<"float"<<endl;
-	
-	unsigned int i,j,k;
-	for(int n=0; n<n_dof; n++){
-		one_d_to_three_d( n, I, J, i, j, k);
-		file_out<<i*dx<<" "<<j*dy<<" "<<k*dz<<endl;
-	}
-	
-	file_out<<"POINT_DATA "<<n_dof<<endl;
-	file_out<<"SCALARS u float 1"<<endl
-			<<"LOOKUP_TABLE default"<<endl;
-	for(int n=0; n<n_dof; n++){
-		file_out<<u[n]<<endl;
-	}
-	
-	file_out.close();
-
-	// output files for matlab
-	// point coordinates and scalar result
-	sprintf(file_name, "results_%i.dat", level);
-	file_out.open(file_name);
-	for(int n=0; n<n_dof; n++){
-		one_d_to_three_d( n, I, J, i, j, k);
-		file_out<<i*dx<<" "<<j*dy<<" "<<k*dz<<" "<<u[n]<<endl;
-	}
-	file_out.close();
-	
-}
-
-
-// write out the results
 int write_results(  double* U,
 					double* V,
 					double* W,
@@ -113,6 +56,9 @@ int write_results(  double* U,
 					cuint nx,
 					cuint ny,
 					cuint nz,
+					cdouble xmin,
+					cdouble ymin,
+					cdouble zmin,
 					cdouble hx,
 					cdouble hy,
 					cdouble hz,
@@ -156,27 +102,79 @@ int write_results(  double* U,
 			<<"DIMENSIONS "<<nx<<" "<<ny<<" "<<nz<<endl
 			<<"POINTS "<<n_dof<<" "<<"float"<<endl;
 	
-	unsigned int i,j,k;
-	for(int n=0; n<n_dof; n++){
-		one_d_to_three_d( n, nx, ny, i, j, k);
-		file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<endl;
+	// unsigned int i,j,k;
+	// for(int n=0; n<n_dof; n++){
+	// 	one_d_to_three_d( n, nx, ny, i, j, k);
+	// 	file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<endl;
+	// }
+
+	// base for the grid
+	cdouble xbase=xmin+hx/2;
+	cdouble ybase=ymin+hy/2;
+	cdouble zbase=zmin+hz/2;
+	
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
+				uint t1, t2, t3, t4;
+				three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
+				three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
+				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
+				three_d_to_one_d(i,j,k, nx,ny, t4);
+
+				file_out<<xbase+i*hx<<" "<<ybase+j*hy<<" "<<zbase+k*hz<<endl;
+			}
+		}
 	}
 	
 	file_out<<"POINT_DATA "<<n_dof<<endl;
 	file_out<<"SCALARS P float 1"<<endl
 			<<"LOOKUP_TABLE default"<<endl;
-	for(int n=0; n<n_dof; n++){
-		file_out<<P[n]<<endl;
+	// for(int n=0; n<n_dof; n++){
+	// 	file_out<<P[n]<<endl;
+	// }
+
+
+	for(int i=0; i<nx; i++){
+		for(int j=0; j<ny; j++){
+			for(int k=0; k<nz; k++){
+				uint t1, t2, t3, t4;
+				three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
+				three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
+				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
+				three_d_to_one_d(i,j,k, nx,ny, t4);
+	
+				file_out<<P[t4]<<endl;
+			}
+		}
 	}
 
-	file_out<<"VECTORS velocity float"<<endl;
-	for(int n=0; n<n_dof; n++){
-		// uint i,j,k;
-		// one_d_to_three_d(n, nx, ny, i,j,k);
-		file_out<<Uc[n]<<" "
-				<<Vc[n]<<" "
-				<<Wc[n]<<endl;
-	}
+file_out<<"VECTORS velocity float"<<endl;
+
+ for(int i=0; i<nx; i++){
+	 for(int j=0; j<ny; j++){
+		 for(int k=0; k<nz; k++){
+			 uint t1, t2, t3, t4;
+			 three_d_to_one_d(i,j+1,k+1, nx, ny+2,  t1);
+			 three_d_to_one_d(i+1,j,k+1, nx+2, ny,  t2);
+			 three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
+			 three_d_to_one_d(i,j,k, nx,ny, t4);
+
+			 file_out<<Uc[t1]<<" "
+					 <<Vc[t2]<<" "
+					 <<Wc[t3]<<endl;
+		 }
+	 }
+ }
+
+
+ // for(int n=0; n<n_dof; n++){
+ // 		// uint i,j,k;
+ // 		// one_d_to_three_d(n, nx, ny, i,j,k);
+ // 		file_out<<Uc[n]<<" "
+ // 				<<Vc[n]<<" "
+ // 				<<Wc[n]<<endl;
+ // 	}
 	
 	file_out.close();
 
@@ -194,7 +192,7 @@ int write_results(  double* U,
 				three_d_to_one_d(i+1,j+1,k, nx+2, ny+2,t3);
 				three_d_to_one_d(i,j,k, nx,ny, t4);
 				
-				file_out<<i*hx<<" "<<j*hy<<" "<<k*hz<<" "
+				file_out<<xbase+i*hx<<" "<<ybase+j*hy<<" "<<zbase+k*hz<<" "
 						<<P[t4]<<" "
 						<<Uc[t1]<<" "
 						<<Vc[t2]<<" "

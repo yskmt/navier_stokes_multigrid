@@ -106,7 +106,6 @@ void viscosity(  double* U,
 	// jacobi iteration
 	jacobi_sparse(tol, max_iteration, n_w_dof, Wss, Wss_tmp,
 				  Lw_val, Lw_col_ind, Lw_row_ptr, W, Er, Rw);
-
 	
 	// v_cycle( n_u_dof, nx-1, ny, nz, hx2i, hy2i, hz2i,
 	// 		 tol, max_iteration, pre_smooth_iteration,

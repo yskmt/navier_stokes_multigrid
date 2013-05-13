@@ -175,11 +175,11 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		cdouble dz_coar = height/(K_coar);
 
 
-		// write partial results for test purpose
-		write_results( U_coar,
-					   n_dof_coar,
-					   I_coar, J_coar, K_coar,
-					   dx_coar, dy_coar, dz_coar, level);
+		// // write partial results for test purpose
+		// write_results( U_coar,
+		// 			   n_dof_coar,
+		// 			   I_coar, J_coar, K_coar,
+		// 			   dx_coar, dy_coar, dz_coar, level);
 		 
 	}
 

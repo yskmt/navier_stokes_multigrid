@@ -24,7 +24,7 @@ IO.o: IO.h advection.h
 
 run:
 	@ export OMP_NUM_THREADS=1
-	@./multigrid 1 3 16 16 16
+	@./multigrid 1 3 10 10 10
 
 clean:
 	@ rm *.o multigrid

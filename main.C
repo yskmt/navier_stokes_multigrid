@@ -50,6 +50,7 @@ void initial_conditions( double* U,
 	return;
 }
 
+// main function!
 int main( int argc, char** argv )
 {
 	// initialize constants
@@ -63,12 +64,12 @@ int main( int argc, char** argv )
 	cdouble lz = 1.0;
 
 	// domain cornders
-	cdouble x_min = 0.0;
-	cdouble y_min = 0.0;
-	cdouble z_min = 0.0;
-	cdouble x_max = x_min+lx;
-	cdouble y_max = y_min+ly;
-	cdouble z_max = z_min+lz;
+	cdouble xmin = 0.0;
+	cdouble ymin = 0.0;
+	cdouble zmin = 0.0;
+	cdouble xmax = xmin+lx;
+	cdouble ymax = ymin+ly;
+	cdouble zmax = zmin+lz;
 	
 	// number of gridpointts in each dimension
 	nt=1;
@@ -119,56 +120,62 @@ int main( int argc, char** argv )
 	double* P = new double[n_dof];
 
 	// set up initial conditions
+	cout<<"setting up initial conditions..."<<endl;
 	initial_conditions(U, V, W, P, nx, ny, nz);
 	
 	// for jacobi method
-	cdouble tol = 0.0001;
+	cdouble tol = 0.01;
 	cuint max_iteration = 10000000;
 	cuint pre_smooth_iteration = 10;
 	
 	// boundary conditions
 	// x0 xl y0 yl z0 zl
-	// cdouble bcs[3][6] = {{0,0,0,0,0,1.0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-	cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	// cdouble bcs[3][6] = { {1,1,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+	cdouble bcs[3][6] = { {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
 
 	double start=omp_get_wtime();	
 	for(int ts=0; ts<nts; ts++){
 		cout<<"loop :"<<ts<<endl;
 		
 		// treat nonlinear (advection) terms
+		cout<<"calculating advection terms..."<<endl;
 		advection(U,V,W, nx,ny,nz, hx, hy, hz, dt, bcs);
 	
 		// implicitly solve viscosity terms
 		double* Uss = new double[n_u_dof];
 		double* Vss = new double[n_v_dof];
 		double* Wss = new double[n_w_dof];
+		cout<<"solving for viscosity terms..."<<endl;
 		viscosity( U, V, W, Uss, Vss, Wss, nx, ny, nz, hx, hy, hz,
 				   hx2i, hy2i, hz2i,
 				   dt, nu, bcs,
 				   tol, max_iteration );
-
-		// cout<<"Uss"<<endl;
-		// for(int i=0; i<n_u_dof; i++){
-		// 	cout<<Uss[i]<<endl;
-		// 	Uss[i] = -Uss[i];
-		// }
-		// cout<<"Vss"<<endl;
-		// for(int i=0; i<n_v_dof; i++){
-		// 	cout<<Vss[i]<<endl;
-		// 	Vss[i] = -Vss[i];
-		// }
-		// cout<<"Wss"<<endl;
-		// for(int i=0; i<n_w_dof; i++){
-		// 	cout<<Wss[i]<<endl;
-		// 	Wss[i] = -Wss[i];
-		// }
 		
 		// solve for pressure and update
+		cout<<"solving for pressure..."<<endl;
 		pressure( U,V,W, P, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz,
 				  hx2i, hy2i, hz2i, tol, max_iteration );
 
+
+		cout<<"U"<<endl;
+		for(int i=0; i<n_u_dof; i++){
+			cout<<U[i]<<endl;
+		}
+		cout<<"V"<<endl;
+		for(int i=0; i<n_v_dof; i++){
+			cout<<V[i]<<endl;
+		}
+		cout<<"W"<<endl;
+		for(int i=0; i<n_w_dof; i++){
+			cout<<W[i]<<endl;
+		}
+
+		
 		// write out the results
-		write_results( U, V, W, P, n_dof, nx, ny, nz, hx, hy, hz, ts, bcs);
+		cout<<"writing results..."<<endl;
+		write_results( U, V, W, P, n_dof, nx, ny, nz,
+					   xmin, ymin, zmin,
+					   hx, hy, hz, ts, bcs);
 
 	}
 	double end=omp_get_wtime();
