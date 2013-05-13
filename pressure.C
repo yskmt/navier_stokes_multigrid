@@ -1,60 +1,59 @@
 #include "pressure.h"
+#include "v_cycle.h"
 
 // compute pressure correction
-void pressure( 	double* U, double* V, double* W,
-				double* P,
-				double* Uss, double* Vss, double* Wss,
-				cuint nx, cuint ny, cuint nz,
-				cdouble bcs[][6],
-				cdouble hx, cdouble hy, cdouble hz,
-				cdouble hx2i, cdouble hy2i, cdouble hz2i,
-				cdouble tol, cuint max_iteration )
+void pressure( 	double* U, double* V, double* W, double* P,
+					double* Uss, double* Vss, double* Wss,
+					cuint nx, cuint ny, cuint nz,
+					cdouble bcs[][6],
+					cdouble lx, cdouble ly, cdouble lz,
+					cdouble hx, cdouble hy, cdouble hz,
+					cdouble hx2i, cdouble hy2i, cdouble hz2i,
+					cdouble tol, cuint max_iteration,
+					cuint pre_smooth_iteration, cuint max_level,
+					cdouble dt)
 {
 	cuint n_dof = nx*ny*nz;
 
-	// load vector (extra +1 for global constraint) 
-	double* Fp = new double[n_dof];
-	// initialize
-	for(int i=0; i<n_dof; i++)
-		Fp[i] =0;
-	
-	// Lp
-	vector<tuple <uint, uint, double> > Lp_sp;
-	vector<double> Lp_val(Lp_sp.size(),0.0);
-	vector<uint> Lp_col_ind(Lp_sp.size(), 0);
-	vector<uint> Lp_row_ptr(1,0);		
-	
-	// build right hand side of pressure poisson equation
-	pressure_rhs(Fp, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz);
-
-	// build pressure matrix
-	pressure_matrix( Lp_sp,
-					 Lp_val, Lp_col_ind, Lp_row_ptr,
-					 nx, ny, nz,
-					 hx2i, hy2i, hz2i,
-					 n_dof
-					 );	
-
-	// solve dicrete poisson equation: Lp\Fp
-	// construct solution vector
-	double* P_tmp = new double[n_dof];
-	// initial guess
-#pragma omp parallel for shared(P, P_tmp) num_threads(nt)
-	for(int n=0; n<n_dof; n++){
-	    P[n] = 0.0;
-	    P_tmp[n] = 0.0;
-    }
 	// residual and error
 	double* Rp = new double[n_dof];
 	double Er = tol*10;
-	// jacobi iteration
-	jacobi_sparse(tol, max_iteration, n_dof, P, P_tmp,
-				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
+	
+	// 0-level v_cycle
+	if(max_level==0)
+		v_cycle_0( P, Rp,
+				   n_dof, nx, ny, nz,
+				   hx, hy, hz,
+				   hx2i, hy2i, hz2i,
+				   tol, max_iteration, pre_smooth_iteration,
+				   hx, hy, hz,
+				   0, max_level,
+				   Er,
+				   Uss, Vss, Wss,
+				   bcs,dt  );
+	else
+		// v-cycle
+		v_cycle( P, n_dof, nx, ny, nz,
+				 hx, hy, hz,
+				 hx2i, hy2i, hz2i,
+				 tol, max_iteration, pre_smooth_iteration,
+				 lx, ly, lz,
+				 0, max_level-1,
+				 Rp,
+				 Er,
+				 Uss, Vss, Wss,
+				 bcs, dt
+				 );
 
+	
 	// compute pressure corrections
 	double* Pr_x = new double[(nx-1)*(ny)*(nz)];
 	double* Pr_y = new double[(nx)*(ny-1)*(nz)];
 	double* Pr_z = new double[(nx)*(ny)*(nz-1)];
+
+	for(int i=0; i<(nx-1)*(ny)*(nz); i++)
+		Pr_x[i]=0.0;
+
 	compute_corrections(  P, Pr_x, Pr_y, Pr_z, nx, ny, nz, hy, hy, hz );
 	
 	// 1d index
@@ -62,31 +61,34 @@ void pressure( 	double* U, double* V, double* W,
 
 	// correct velocities
 	// x-direction
+#pragma omp parallel for private(t) shared(U, Uss, Pr_x) num_threads(nt)
 	for(int i=0; i<nx-1; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx-1, ny, t);
-				U[t] = Uss[t] - Pr_x[t];
+				U[t] = Uss[t] - Pr_x[t]*dt;
 			}
 		}
 	}
 	
 	// y-direction	
+#pragma omp parallel for private(t) shared(V, Vss, Pr_y) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny-1; j++){
 			for(int k=0; k<nz; k++){
 				three_d_to_one_d(i,j,k, nx, ny-1, t);
-				V[t] = Vss[t] - Pr_y[t];
+				V[t] = Vss[t] - Pr_y[t]*dt;
 			}
 		}
 	}
 	
 	// z-direction
+#pragma omp parallel for private(t) shared(W, Wss, Pr_z) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz-1; k++){
 				three_d_to_one_d(i,j,k, nx, ny, t);
-				W[t] = Wss[t] - Pr_z[t];
+				W[t] = Wss[t] - Pr_z[t]*dt;
 			}
 		}
 	}
@@ -94,7 +96,6 @@ void pressure( 	double* U, double* V, double* W,
 	// cleanup
 	delete[] Pr_x, Pr_y, Pr_z;
 
-	return;
 }
 
 // build right hand side of pressure poisson equation
@@ -102,7 +103,9 @@ void pressure_rhs( double* F,
 				   double* Uss, double* Vss, double* Wss,
 				   cuint nx, cuint ny, cuint nz,
 				   cdouble bcs[][6],
-				   cdouble hx, cdouble hy, cdouble hz )
+				   cdouble hx, cdouble hy, cdouble hz,
+				   cdouble dt
+				   )
 {
 	// for(int i=0; i<(nx-1)*ny*nz; i++)
 	// 	cout<<"Uss: "<<Uss[i]<<endl;
@@ -111,8 +114,13 @@ void pressure_rhs( double* F,
 	// for(int i=0; i<(nx)*ny*(nz-1); i++)
 	// 	cout<<"Wss: "<<Wss[i]<<endl;
 	cuint n_dof = nx*ny*nz;
-		
+
+	// initialize
+	for(int i=0; i<n_dof; i++)
+		F[i] =0;
+	
 	// Uss contribution
+#pragma omp parallel for shared(Uss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -132,6 +140,7 @@ void pressure_rhs( double* F,
 	}
 
 	// Vss contribution
+#pragma omp parallel for shared(Vss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -151,6 +160,7 @@ void pressure_rhs( double* F,
 	}
 	
 	// Wss contribution
+#pragma omp parallel for shared(Wss, F) num_threads(nt)
 	for(int i=0; i<nx; i++){
 		for(int j=0; j<ny; j++){
 			for(int k=0; k<nz; k++){
@@ -170,6 +180,12 @@ void pressure_rhs( double* F,
 		}
 	}
 
+	// divide everyhing by dt
+	for(int i=0; i<(nx*ny*nz); i++){
+		F[i] = F[i]/dt;
+	}
+									 
+	
 	// global constraint to close the system
 	// F[n_dof] = 0;
 
@@ -179,11 +195,11 @@ void pressure_rhs( double* F,
 	// F[t] = 0;
 	
 	// output to file for testing purpose
-	ofstream file_out("Fp_vector.dat");
-	for(int i=0; i<(n_dof); i++){
-		file_out<<F[i]<<endl;
-	}
-	file_out.close();
+	// ofstream file_out("Fp_vector.dat");
+	// for(int i=0; i<(n_dof); i++){
+	// 	file_out<<F[i]<<endl;
+	// }
+	// file_out.close();
 
 	
 	return;
@@ -270,14 +286,14 @@ void pressure_matrix( vector<tuple <uint, uint, double> >& Lp_sp,
 
 
 		// global constraint to close the system
-// #pragma omp for
-// 		for(int i=0; i<n_dof; i++){
-// 			sparse_add(M[myrank], i, n_dof, 1);
-// 			sparse_add(M[myrank], n_dof, i, 1);
-// 		}
-// 		if(myrank==0)
-// 			sparse_add(M[myrank], n_dof, n_dof,
-// 					   n_dof);
+		// #pragma omp for
+		// 		for(int i=0; i<n_dof; i++){
+		// 			sparse_add(M[myrank], i, n_dof, 1);
+		// 			sparse_add(M[myrank], n_dof, i, 1);
+		// 		}
+		// 		if(myrank==0)
+		// 			sparse_add(M[myrank], n_dof, n_dof,
+		// 					   n_dof);
 		
 	} // end parallel region		
 
@@ -338,6 +354,13 @@ void compute_corrections( double* Pr,
 						  cuint nx, cuint ny, cuint nz,
 						  cdouble hx, cdouble hy, cdouble hz )
 {
+	for(int i=0; i<(nx-1)*(ny)*(nz); i++)
+		Pr_x[i]=0.0;
+	for(int i=0; i<(nx)*(ny-1)*(nz); i++)
+		Pr_y[i]=0.0;
+	for(int i=0; i<(nx)*(ny)*(nz-1); i++)
+		Pr_z[i]=0.0;
+	
 	staggered_first_difference( Pr, Pr_x, nx, ny, nz, nx-1, ny, nz, hx, X_DIR );
 	staggered_first_difference( Pr, Pr_y, nx, ny, nz, nx, ny-1, nz, hy, Y_DIR );
 	staggered_first_difference( Pr, Pr_z, nx, ny, nz, nx, ny, nz-1, hz, Z_DIR );

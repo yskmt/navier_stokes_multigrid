@@ -1,18 +1,21 @@
 #include "v_cycle.h"
+#include "pressure.h"
 
 // multigrid v-cycle
-double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
-				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
-				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
-				 cdouble width, cdouble length, cdouble height,
-				 cuint level, cuint max_level,
-				 double* F,
-				 double& Er
-				  )
+void v_cycle( double* P, uint n_dof, cuint nx, cuint ny, cuint nz,
+			  cdouble hx, cdouble hy, cdouble hz,
+			  cdouble hx2i, cdouble hy2i, cdouble hz2i,
+			  cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+			  cdouble lx, cdouble ly, cdouble lz,
+			  cuint level, cuint max_level,
+			  double* F,
+			  double& Er,
+			  double* Uss, double* Vss, double* Wss,
+			  cdouble bcs[][6],
+			  cdouble dt
+			  )
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
-	// for global constraint
-	n_dof = n_dof+1;
 
 	// initialize finite difference matrix (+1 for global constraint)
 // 	double** M = new double*[n_dof];
@@ -32,32 +35,34 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	
 	// create finite difference matrix
 	cout<<"create finite difference matrix"<<endl;
-	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
-					 I,J,K, dx2i, dy2i, dz2i, n_dof);
-
+	// build pressure matrix
+	pressure_matrix( M_sp,
+					 val, col_ind, row_ptr,
+					 nx, ny, nz,
+					 hx2i, hy2i, hz2i,
+					 n_dof
+					 );	
+	
 	// construct load vector
 	// load vector is created only at the level 0
 	if(level==0){
 		F = new double[n_dof];
 		cout<<"create load vector"<<endl;
-		load_vector(F, n_dof, I,J,K );
-	}
 
-	// set dirichlet boundary conditions
-	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
-	// cout<<"number of boundary nodes = "<<n_bd<<endl;
+		pressure_rhs(F, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz, dt);
+		// load_vector(F, n_dof, I,J,K );
+	}
 
 	// cout<<"save matrix and vector"<<endl;
 	// char matrix_file[100];
-	char vector_file[100];
-	// sprintf(matrix_file, "matrix_%i.dat", level);
-	sprintf(vector_file, "vector_%i.dat", level);
-	// if(write_matrix(n_dof,n_dof,M,matrix_file))
-	// 	cout<<"write_matrix fail"<<endl;
-	if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
+	// char vector_file[100];
+	// sprintf(vector_file, "vector_%i.dat", level);
+	// if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
 	
 	// construct solution vector
-	double* U = new double[n_dof];
+	double* U;
+	if(level==0) U=P;
+	else U = new double[n_dof];
 	double* U_tmp = new double[n_dof];
 	// initial guess
 #pragma omp parallel for shared(U, U_tmp) num_threads(nt)
@@ -79,27 +84,25 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	double* F_coar;
 		
 	// Restrict the residual
-	cuint I_coar = (I)/2;
-	cuint J_coar = (J)/2;
-	cuint K_coar = (K)/2;
-	uint n_dof_coar = I_coar*J_coar*K_coar; // +1 for global constraint
-	n_dof_coar +=1;
+	cuint nx_coar = (nx)/2;
+	cuint ny_coar = (ny)/2;
+	cuint nz_coar = (nz)/2;
+	uint n_dof_coar = nx_coar*ny_coar*nz_coar; 
 	F_coar = new double[n_dof_coar];
 
-	// mesh size (-1) ignored because of periodic domain
-	cdouble dx_coar = width/(I_coar);
-	cdouble dy_coar = length/(J_coar);
-	cdouble dz_coar = height/(K_coar);
+	// mesh size 
+	cdouble hx_coar = lx/(nx_coar);
+	cdouble hy_coar = ly/(ny_coar);
+	cdouble hz_coar = lz/(nz_coar);
 	
 	// inverse of square of mesh sizes
-	cdouble dx2i_coar = 1.0/(dx_coar*dx_coar);
-	cdouble dy2i_coar = 1.0/(dy_coar*dy_coar);
-	cdouble dz2i_coar = 1.0/(dz_coar*dz_coar);
+	cdouble hx2i_coar = 1.0/(hx_coar*hx_coar);
+	cdouble hy2i_coar = 1.0/(hy_coar*hy_coar);
+	cdouble hz2i_coar = 1.0/(hz_coar*hz_coar);
 		
 	// restric residual to the coarrse grid
 	cout<<"restriction"<<endl;
-	restriction( R, F_coar, I, J, K, I_coar, J_coar, K_coar);
-	F_coar[n_dof_coar-1] = 0;//-R[n_dof-1]/n_dof*n_dof_coar; // global constraint
+	restriction( R, F_coar, nx, ny, nz, nx_coar, ny_coar, nz_coar);
 	
 	// construct solution vector on coarse grid
 	double* U_coar = new double[n_dof_coar];
@@ -116,15 +119,6 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 			U_coar_tmp[n] = 0.0;
 		}
 
-		// initialize finite difference matrix (+1 for global constraint)
-// 		double** M_coar = new double*[n_dof_coar];
-// 		for(int n = 0; n < (n_dof_coar); n++)
-// 			M_coar[n] = new double[n_dof_coar];
-// 		// initialize 
-// #pragma omp parallel for shared(M_coar)
-// 		for(int i=0; i<n_dof_coar; i++)
-// 			for(int j=0; j<n_dof_coar; j++)
-// 				M_coar[i][j] = 0;
 		vector<tuple <uint, uint, double> > M_sp_coar;
 		vector<double> val_coar;
 		vector<uint> col_ind_coar;
@@ -132,19 +126,20 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		
 		// create finite difference matrix
 		cout<<"create finite difference matrix"<<endl;
-		// fd_matrix_sparse(M_coar, I_coar,J_coar,K_coar,
-		// 				 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar);
-		fd_matrix_sparse(M_sp_coar, val_coar, col_ind_coar, row_ptr_coar,
-						 I_coar,J_coar,K_coar,
-						 dx2i_coar, dy2i_coar, dz2i_coar, n_dof_coar );
-
+		// fd_matrix_sparse(M_sp_coar, val_coar, col_ind_coar, row_ptr_coar,
+		// 				 nx_coar,ny_coar,nz_coar,
+		// 				 hx2i_coar, hy2i_coar, hz2i_coar, n_dof_coar );
+		
+		pressure_matrix( M_sp_coar, val_coar, col_ind_coar, row_ptr_coar,
+						 nx_coar, ny_coar, nz_coar,
+						 hx2i_coar, hy2i_coar, hz2i_coar,
+						 n_dof_coar
+						 );
 		
 		// residual on coarse grid
 		double* R_coar = new double[n_dof_coar];
 		
 		// exact Jacobi method
-		// jacobi(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
-			   // M_coar, F_coar, Er, R_coar);
 		Er = tol*10;
 		jacobi_sparse(tol, max_iteration, n_dof_coar, U_coar, U_coar_tmp,
 					  val_coar, col_ind_coar, row_ptr_coar, F_coar,
@@ -164,16 +159,20 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	}
 	else{
 		// v_cycle on the coarse grid
-		U_coar = v_cycle( n_dof_coar-1, I_coar, J_coar, K_coar,
-						  dx2i_coar, dy2i_coar, dz2i_coar,
+		v_cycle( U_coar, n_dof_coar, nx_coar, ny_coar, nz_coar,
+						  hx_coar, hy_coar, hz_coar,
+						  hx2i_coar, hy2i_coar, hz2i_coar,
 						  tol, max_iteration, pre_smooth_iteration,
-						  width, length, height, level+1, max_level, F_coar, Er
+						  lx, ly, lz,
+						  level+1, max_level,
+						  F_coar, Er,
+						  Uss, Vss, Wss,
+						  bcs, dt
 						  );
 		
-		cdouble dx_coar = width/(I_coar);
-		cdouble dy_coar = length/(J_coar);
-		cdouble dz_coar = height/(K_coar);
-
+		cdouble dx_coar = lx/(nx_coar);
+		cdouble dy_coar = ly/(ny_coar);
+		cdouble dz_coar = lz/(nz_coar);
 
 		// // write partial results for test purpose
 		// write_results( U_coar,
@@ -183,13 +182,9 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 		 
 	}
 
-	// fine grid (-1 ignored due to periodic domain)
-	// cuint I_fine = I*2;
-	// cuint J_fine = J*2;
-	// cuint K_fine = K*2;
-	// cuint n_dof_fine = I_fine*J_fine*K_fine+1;
+	// interpolate to fine grid
 	double* E = new double[n_dof];
-	interpolation(U_coar, E, I_coar,J_coar,K_coar, I, J, K);
+	interpolation(U_coar, E, nx_coar,ny_coar,nz_coar, nx, ny, nz);
 
 	// correct the fine grid approximation
 #pragma omp parallel for shared(U,E) num_threads(nt)
@@ -200,10 +195,10 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	// perform post-smoothing and compute residual
 	uint post_smooth_iteration;
-	if(level==0)
+	// if(level==0)
 		post_smooth_iteration=max_iteration;
-	else
-		post_smooth_iteration=( pre_smooth_iteration+1)*1000;
+	// else
+		// post_smooth_iteration=( pre_smooth_iteration+1)*1000;
 
 	cout<<"post-smoothing "<<post_smooth_iteration<<" times on level "
 		<<level<<endl;
@@ -214,11 +209,6 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 
 	
 	// cleanup
-	// for(int n = 0; n< n_dof; n++) {
-	// 	delete[] M[n];
-	// }
-	// delete[] M;
-
 	if (level==0)
 		delete[] F;
 
@@ -227,7 +217,6 @@ double* v_cycle( uint n_dof, cuint I, cuint J, cuint K,
 	delete[] E;
 	delete[] U_coar, U_coar_tmp;
 	
-	return U;
 }
 
 // 3D full weight restriction
@@ -333,93 +322,55 @@ void fine_map( double* U, double* U_new,
 
 
 // 0_level v-cycle for testing purpose
-double* v_cycle_0( uint n_dof, cuint I, cuint J, cuint K,
-				 cdouble dx2i, cdouble dy2i, cdouble dz2i,
-				 cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
-				 cdouble width, cdouble length, cdouble height,
-				 cuint level, cuint max_level,
-				 double* F,
-				   double& Er
-				   )
+void v_cycle_0( double* P, double* Rp,
+				   uint n_dof, cuint nx, cuint ny, cuint nz,
+				   cdouble hx, cdouble hy, cdouble hz,
+				   cdouble hx2i, cdouble hy2i, cdouble hz2i,
+				   cdouble tol, cuint max_iteration, cuint pre_smooth_iteration,
+				   cdouble width, cdouble length, cdouble height,
+				   cuint level, cuint max_level,
+				   double& Er,
+				   double* Uss, double* Vss, double* Wss,
+				cdouble bcs[][6],
+				cdouble dt)
 {
 	cout<<"level: "<<level<<" n_dof: "<<n_dof<<endl;
-	// for global constraint
-	n_dof = n_dof+1;
-	// initialize finite difference matrix (+1 for global constraint)
-// 	double** M = new double*[n_dof];
-// 	for(int n = 0; n < (n_dof); n++)
-// 		M[n] = new double[n_dof];
-// 	// initialize 
-// #pragma omp parallel for shared(n_dof, M)
-// 	for(int i=0; i<n_dof; i++)
-// 		for(int j=0; j<n_dof; j++)
-// 			M[i][j] = 0;
 
-	cout<<"fd_matrix_sparse"<<endl;
-	vector<tuple <uint, uint, double> > M_sp;
-	vector<double> val;
-	vector<uint> col_ind;
-	vector<uint> row_ptr(1,0);
-		
-	// create finite difference matrix
-	// cout<<"create finite difference matrix"<<endl;
-	// fd_matrix(M, I,J,K, dx2i, dy2i, dz2i, n_dof);
-	// create finite difference matrix
-	cout<<"create finite difference matrix"<<endl;
-	fd_matrix_sparse(M_sp, val, col_ind, row_ptr,
-					 I,J,K, dx2i, dy2i, dz2i, n_dof );
+	// load vector (extra +1 for global constraint) 
+	double* Fp = new double[n_dof];
+
+	// Lp
+	vector<tuple <uint, uint, double> > Lp_sp;
+	vector<double> Lp_val(Lp_sp.size(),0.0);
+	vector<uint> Lp_col_ind(Lp_sp.size(), 0);
+	vector<uint> Lp_row_ptr(1,0);		
 	
-	// construct load vector
-	// load vector is created only at the level 0
-	if(level==0){
-		F = new double[n_dof];
-		cout<<"create load vector"<<endl;
-		load_vector(F, n_dof, I,J,K );
-	}
+	// build right hand side of pressure poisson equation
+	pressure_rhs(Fp, Uss, Vss, Wss, nx, ny, nz, bcs, hx, hy, hz, dt);
 
-	// set dirichlet boundary conditions
-	// unsigned int n_bd=boundary_conditins(n_dof, I, J, K, M, F);	
-	// cout<<"number of boundary nodes = "<<n_bd<<endl;
+	// build pressure matrix
+	pressure_matrix( Lp_sp,
+					 Lp_val, Lp_col_ind, Lp_row_ptr,
+					 nx, ny, nz,
+					 hx2i, hy2i, hz2i,
+					 n_dof
+					 );	
 
-	// cout<<"save matrix and vector"<<endl;
-	// char matrix_file[100];
-	// char vector_file[100];
-	// sprintf(matrix_file, "matrix_%i.dat", level);
-	// sprintf(vector_file, "vector_%i.dat", level);
-	// if(write_matrix(n_dof,n_dof,M,matrix_file))
-	// 	cout<<"write_matrix fail"<<endl;
-	// if(write_vector(n_dof,F,vector_file)) cout<<"write_vector fail"<<endl;
-	
+	// solve dicrete poisson equation: Lp\Fp
 	// construct solution vector
-	double* U = new double[n_dof];
-	double* U_tmp = new double[n_dof];
+	double* P_tmp = new double[n_dof];
 	// initial guess
+#pragma omp parallel for shared(P, P_tmp) num_threads(nt)
 	for(int n=0; n<n_dof; n++){
-	    U[n] = 0.0;
-	    U_tmp[n] = 0.0;
+	    P[n] = 0.0;
+	    P_tmp[n] = 0.0;
     }
-
-	// residual and error
-	double* R = new double[n_dof];
-
-	// perform full jacobi iteration
-	cout<<"jacobi method "<<max_iteration<<" times"<<endl;
-	// jacobi(tol, max_iteration, n_dof, U, U_tmp, M, F, Er, R);
-	jacobi_sparse(tol, max_iteration, n_dof, U, U_tmp,
-				  val, col_ind, row_ptr, F,
-				  Er, R);
-		
-	// // cleanup
-	// for(int n = 0; n< n_dof; n++) {
-	// 	delete[] M[n];
-	// }
-	// delete[] M;
-
-	if (level==0)
-		delete[] F;
-
-	delete[] U_tmp;
-	delete[] R;
 	
-	return U;
+	// jacobi iteration
+	jacobi_sparse(tol, max_iteration, n_dof, P, P_tmp,
+				  Lp_val, Lp_col_ind, Lp_row_ptr, Fp, Er, Rp);
+
+	delete[] P_tmp;
+
+	return ;
 }
