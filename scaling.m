@@ -14,12 +14,16 @@ xlim([0 16]);
 set(gca,'XTick',[1 2 4 8 16]);
 title('Strong Scaling');
 legend('advection','viscosity','pressure','total');
+xlabel('# of nodes');
+ylabel('time [s]');
 
 Ep = Tt(end)./(Tt.*Nt);
 semilogx(Nt, Ep, '-o');
 xlim([0 16]);
 set(gca,'XTick',[1 2 4 8 16]);
 title('Efficiency');
+xlabel('# of nodes');
+ylabel('efficiency');
 
 % weak scaling
 sqrt((32^3)^2/16*8); % 24*24*40
@@ -27,8 +31,12 @@ sqrt((32^3)^2/16*4); % 32*32*16
 sqrt((32^3)^2/16*2); % 24*24*20
 sqrt((32^3)^2/16*1); % 32*16*16
 
-Tw_weak = [96.2477 77.2512 70.8685 58.825 65.499];
+% Tw_weak = [96.2477 77.2512 70.8685 58.825 65.499];
+Tw_weak = [94.9259 47.8498 19.2619 7.54821 3.63176];
+
 semilogx(Nt, Tw_weak, '-o');
 xlim([0 16]);
+xlabel('# of nodes');
+ylabel('total time [s]');
 set(gca,'XTick',[1 2 4 8 16]);
 title('Weak Scaling');
